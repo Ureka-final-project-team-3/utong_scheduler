@@ -18,7 +18,7 @@ public interface ContractHourlyAvgPriceRepository extends JpaRepository<Contract
         INSERT INTO contract_hourly_avg_price (id, aggregated_at, avg_price)
         SELECT 
             UUID() AS id,
-            :previousHour AS aggregated_at,
+            :currentHour AS aggregated_at,
             COALESCE(SUM(c.price * c.amount) / NULLIF(SUM(c.amount), 0), 0) AS avg_price
         FROM contract c
         WHERE c.created_at >= :previousHour

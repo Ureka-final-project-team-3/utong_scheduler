@@ -50,19 +50,19 @@ public class ContractAggregationScheduler {
                 Long previousPrice = contractHourlyAvgPriceRepository.findLatestAvgPrice(previousHour);
 
                 if(previousPrice != null) {
-                    contractHourlyAvgPriceRepository.insertHourlyAvgPriceWithValue(previousHour, previousPrice);
+                    contractHourlyAvgPriceRepository.insertHourlyAvgPriceWithValue(currentHour, previousPrice);
                     log.info("이전 가격 기반 집계 완료: {} 원", previousPrice);
                 }
                 else { // 아무 거래도 없는 경우
                     Price price = priceRepository.findById(PRICE_ID)
                             .orElseThrow(() -> new RuntimeException("기본 가격 정보가 없습니다."));
 
-                    contractHourlyAvgPriceRepository.insertHourlyAvgPriceWithValue(previousHour, price.getMinimumPrice());
+                    contractHourlyAvgPriceRepository.insertHourlyAvgPriceWithValue(currentHour, price.getMinimumPrice());
                     log.info("기본 가격 기반 집계 완료: {} 원", price.getMinimumPrice());
                 }
             }
 
-            publishAggregationComplete(previousHour);
+            publishAggregationComplete(currentHour);
         }
         catch (Exception e) {
             log.error("계약 평균가 집계 중 오류 발생: {}", e.getMessage());
