@@ -18,10 +18,11 @@ public interface ContractHourlyAvgPriceRepository extends JpaRepository<Contract
         SELECT 
             UUID() AS id,
             :previousHour AS aggregated_at,
-            SUM(c.price * c.amount) / SUM(c.amount) AS avg_price
+            COALESCE(SUM(c.price * c.amount) / NULLIF(SUM(c.amount), 0), 0) AS avg_price
         FROM contract c
         WHERE c.created_at >= :previousHour
         AND c.created_at < :currentHour
+        HAVING COUNT(*) > 0
         """, nativeQuery = true)
     void insertHourlyAvgPrice(
             @Param("previousHour") LocalDateTime previousHour,
