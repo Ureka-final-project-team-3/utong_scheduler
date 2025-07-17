@@ -12,17 +12,17 @@ import java.time.LocalDateTime;
 @Repository
 public interface ContractHourlyAvgPriceRepository extends JpaRepository<ContractHourlyAvgPrice, String> {
 
-    @Query("""
-        INSERT INTO ContractHourlyAvgPrice (aggregatedAt, avgPrice)
-        SELECT
-            :previousHour AS aggregatedAt,
-            SUM(c.price * c.amount) / SUM(c.amount) AS avgPrice
-        FROM Contract c
-        WHERE c.createdAt >= :previousHour
-        AND c.createdAt < :currentHour
-        """
-    )
     @Modifying
+    @Query(value = """
+        INSERT INTO contract_hourly_avg_price (id, aggregated_at, avg_price)
+        SELECT 
+            UUID() AS id,
+            :previousHour AS aggregated_at,
+            SUM(c.price * c.amount) / SUM(c.amount) AS avg_price
+        FROM contract c
+        WHERE c.created_at >= :previousHour
+        AND c.created_at < :currentHour
+        """, nativeQuery = true)
     void insertHourlyAvgPrice(
             @Param("previousHour") LocalDateTime previousHour,
             @Param("currentHour") LocalDateTime currentHour
