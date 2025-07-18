@@ -4,6 +4,7 @@ import com.ureka.team3.utong_scheduler.contract.repository.ContractHourlyAvgPric
 import com.ureka.team3.utong_scheduler.price.entity.Price;
 import com.ureka.team3.utong_scheduler.price.repository.PriceRepository;
 import com.ureka.team3.utong_scheduler.publisher.RedisPublisher;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -22,6 +23,7 @@ public class ContractAggregationScheduler {
     private final RedisPublisher redisPublisher;
 
     private static final String PRICE_ID = "903ee67c-71b3-432e-bbd1-aaf5d5043376";
+    private static final int MAX_REDIS_LIST_SIZE = 8;
 
     // 매시간 계약 평균가를 계산하여 저장하는 스케줄러
     @Scheduled(cron = "0 0 * * * *")
@@ -49,9 +51,8 @@ public class ContractAggregationScheduler {
         }
     }
 
-    private void handleAggregation(LocalDateTime currentHour, LocalDateTime previousHour, String dataCode) {
-
-
+    @Transactional
+    public void handleAggregation(LocalDateTime currentHour, LocalDateTime previousHour, String dataCode) {
         // 해당 시간대 거래 건수 확인
         int contractCount = contractHourlyAvgPriceRepository.countContractsByTimeRange(previousHour, currentHour, dataCode);
 
@@ -75,5 +76,17 @@ public class ContractAggregationScheduler {
             }
         }
 
+    }
+
+    @Transactional
+    public void init() {
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime currentHour = now.withMinute(0).withSecond(0).withNano(0);
+        LocalDateTime previousHour = now.minusHours(1).withMinute(0).withSecond(0).withNano(0);
+
+        for(int i = MAX_REDIS_LIST_SIZE - 1; i >= 0; i--) {
+            handleAggregation(currentHour.minusHours(i), previousHour.minusHours(i), "001"); // LTE
+            handleAggregation(currentHour.minusHours(i), previousHour.minusHours(i), "002"); // 5G
+        }
     }
 }
