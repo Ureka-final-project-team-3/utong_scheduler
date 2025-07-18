@@ -26,7 +26,7 @@ public class ContractAggregationScheduler {
     // 매시간 계약 평균가를 계산하여 저장하는 스케줄러
     @Scheduled(cron = "0 0 * * * *")
     @Transactional
-    public void aggregateHourlyAvgPrice() {
+    public void handleAggregation() {
         try {
             log.info("계약 평균가 집계 시작");
 
@@ -35,28 +35,10 @@ public class ContractAggregationScheduler {
             LocalDateTime currentHour = now.withMinute(0).withSecond(0).withNano(0);
             LocalDateTime previousHour = now.minusHours(1).withMinute(0).withSecond(0).withNano(0);
 
-            // 해당 시간대 거래 건수 확인
-            int contractCount = contractHourlyAvgPriceRepository.countContractsByTimeRange(previousHour, currentHour);
 
-            // 평균가 계산 및 저장
-            if (contractCount > 0) { // 최근 1시간 거래가 있는 경우
-                contractHourlyAvgPriceRepository.insertHourlyAvgPrice(previousHour, currentHour);
-                log.info("계약 평균가 집계 완료: {}건, {} ~ {}", contractCount, previousHour, currentHour);
-            } else { // 최근 1시간 거래가 없는 경우 -> 이전 시간의 평균가 중 가장 가까운 시간의 평균가를 사용
-                Long previousPrice = contractHourlyAvgPriceRepository.findLatestAvgPrice(previousHour);
 
-                if(previousPrice != null) {
-                    contractHourlyAvgPriceRepository.insertHourlyAvgPriceWithValue(currentHour, previousPrice);
-                    log.info("이전 가격 기반 집계 완료: {} 원", previousPrice);
-                }
-                else { // 아무 거래도 없는 경우
-                    Price price = priceRepository.findById(PRICE_ID)
-                            .orElseThrow(() -> new RuntimeException("기본 가격 정보가 없습니다."));
-
-                    contractHourlyAvgPriceRepository.insertHourlyAvgPriceWithValue(currentHour, price.getMinimumPrice());
-                    log.info("기본 가격 기반 집계 완료: {} 원", price.getMinimumPrice());
-                }
-            }
+            handleAggregation(currentHour, previousHour, "001"); // LTE
+            handleAggregation(currentHour, previousHour, "002"); // 5G
 
             redisPublisher.publishAggregationComplete(currentHour);
         }
@@ -65,5 +47,33 @@ public class ContractAggregationScheduler {
 
             redisPublisher.publishAggregationFailed(e.getMessage());
         }
+    }
+
+    private void handleAggregation(LocalDateTime currentHour, LocalDateTime previousHour, String dataCode) {
+
+
+        // 해당 시간대 거래 건수 확인
+        int contractCount = contractHourlyAvgPriceRepository.countContractsByTimeRange(previousHour, currentHour, dataCode);
+
+        // 평균가 계산 및 저장
+        if (contractCount > 0) { // 최근 1시간 거래가 있는 경우
+            contractHourlyAvgPriceRepository.insertHourlyAvgPrice(previousHour, currentHour, dataCode);
+            log.info("계약 평균가 집계 완료: {}건, {} ~ {}, 데이터 유형 : {}", contractCount, previousHour, currentHour, dataCode.equals("001") ? "LTE" : "5G");
+        } else { // 최근 1시간 거래가 없는 경우 -> 이전 시간의 평균가 중 가장 가까운 시간의 평균가를 사용
+            Long previousPrice = contractHourlyAvgPriceRepository.findLatestAvgPrice(previousHour, dataCode);
+
+            if(previousPrice != null) {
+                contractHourlyAvgPriceRepository.insertHourlyAvgPriceWithValue(currentHour, previousPrice, dataCode);
+                log.info("이전 가격 기반 집계 완료: {} 원, 데이터 유형 : {}", previousPrice, dataCode.equals("001") ? "LTE" : "5G");
+            }
+            else { // 아무 거래도 없는 경우
+                Price price = priceRepository.findById(PRICE_ID)
+                        .orElseThrow(() -> new RuntimeException("기본 가격 정보가 없습니다."));
+
+                contractHourlyAvgPriceRepository.insertHourlyAvgPriceWithValue(currentHour, price.getMinimumPrice(), dataCode);
+                log.info("기본 가격 기반 집계 완료: {} 원, 데이터 유형 : {}", price.getMinimumPrice(), dataCode.equals("001") ? "LTE" : "5G");
+            }
+        }
+
     }
 }

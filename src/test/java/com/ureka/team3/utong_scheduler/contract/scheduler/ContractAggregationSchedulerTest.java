@@ -1,11 +1,9 @@
 package com.ureka.team3.utong_scheduler.contract.scheduler;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.ureka.team3.utong_scheduler.contract.dto.AggregationStatusMessage;
 import com.ureka.team3.utong_scheduler.contract.repository.ContractHourlyAvgPriceRepository;
 import com.ureka.team3.utong_scheduler.price.entity.Price;
 import com.ureka.team3.utong_scheduler.price.repository.PriceRepository;
+import com.ureka.team3.utong_scheduler.publisher.RedisPublisher;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -13,18 +11,17 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-@DisplayName("ContractAggregationScheduler 유닛 테스트")
+@DisplayName("ContractAggregationScheduler 테스트")
 class ContractAggregationSchedulerTest {
 
     @Mock
@@ -34,294 +31,191 @@ class ContractAggregationSchedulerTest {
     private PriceRepository priceRepository;
 
     @Mock
-    private StringRedisTemplate stringRedisTemplate;
-
-    @Mock
-    private ObjectMapper objectMapper;
+    private RedisPublisher redisPublisher;
 
     @InjectMocks
     private ContractAggregationScheduler contractAggregationScheduler;
 
     private final String PRICE_ID = "903ee67c-71b3-432e-bbd1-aaf5d5043376";
-    private final String CONTRACT_AGGREGATION_STATUS_CHANNEL = "contract:aggregation:status";
 
     @BeforeEach
     void setUp() {
-        // static final 필드는 리플렉션으로 변경할 수 없으므로 setUp 메서드에서 제거
-        // 대신 테스트에서 실제 상수 값을 직접 사용
+        // static final 필드는 리플렉션으로 변경할 수 없으므로 setUp에서 제거
+        // 테스트에서 실제 상수 값을 직접 사용
     }
 
     @Test
-    @DisplayName("거래가 있는 경우 - 정상적으로 평균가 계산 및 저장")
-    void aggregateHourlyAvgPrice_WithContracts_Success() throws JsonProcessingException {
+    @DisplayName("LTE와 5G 모두 거래가 있는 경우 - 정상적으로 집계")
+    void handleAggregation_BothDataTypesWithContracts_Success() {
         // given
-        int contractCount = 5;
-        String expectedJson = "{\"status\":\"SUCCESS\"}";
+        int lteContractCount = 5;
+        int fiveGContractCount = 3;
 
-        when(contractHourlyAvgPriceRepository.countContractsByTimeRange(any(), any()))
-                .thenReturn(contractCount);
-        when(objectMapper.writeValueAsString(any(AggregationStatusMessage.class)))
-                .thenReturn(expectedJson);
+        when(contractHourlyAvgPriceRepository.countContractsByTimeRange(any(), any(), eq("001")))
+                .thenReturn(lteContractCount);
+        when(contractHourlyAvgPriceRepository.countContractsByTimeRange(any(), any(), eq("002")))
+                .thenReturn(fiveGContractCount);
 
         // when
-        contractAggregationScheduler.aggregateHourlyAvgPrice();
+        contractAggregationScheduler.handleAggregation();
 
         // then
+        // LTE 집계 확인
         verify(contractHourlyAvgPriceRepository, times(1))
-                .countContractsByTimeRange(any(LocalDateTime.class), any(LocalDateTime.class));
+                .countContractsByTimeRange(any(LocalDateTime.class), any(LocalDateTime.class), eq("001"));
         verify(contractHourlyAvgPriceRepository, times(1))
-                .insertHourlyAvgPrice(any(LocalDateTime.class), any(LocalDateTime.class));
-        verify(contractHourlyAvgPriceRepository, never())
-                .findLatestAvgPrice(any());
-        verify(contractHourlyAvgPriceRepository, never())
-                .insertHourlyAvgPriceWithValue(any(), any());
+                .insertHourlyAvgPrice(any(LocalDateTime.class), any(LocalDateTime.class), eq("001"));
 
-        // Redis 메시지 발행 확인
-        verify(stringRedisTemplate, times(1))
-                .convertAndSend(eq(CONTRACT_AGGREGATION_STATUS_CHANNEL), eq(expectedJson));
+        // 5G 집계 확인
+        verify(contractHourlyAvgPriceRepository, times(1))
+                .countContractsByTimeRange(any(LocalDateTime.class), any(LocalDateTime.class), eq("002"));
+        verify(contractHourlyAvgPriceRepository, times(1))
+                .insertHourlyAvgPrice(any(LocalDateTime.class), any(LocalDateTime.class), eq("002"));
+
+        // Redis 메시지는 1번만 발행
+        verify(redisPublisher, times(1))
+                .publishAggregationComplete(any(LocalDateTime.class));
+        verify(redisPublisher, never())
+                .publishAggregationFailed(any());
     }
 
     @Test
-    @DisplayName("거래가 없고 이전 가격이 있는 경우 - 이전 가격 사용")
-    void aggregateHourlyAvgPrice_NoContractsWithPreviousPrice_Success() throws JsonProcessingException {
+    @DisplayName("LTE는 거래 있고 5G는 거래 없는 경우 - 혼합 처리")
+    void handleAggregation_LteWithContracts5GWithoutContracts_MixedHandling() {
         // given
-        int contractCount = 0;
+        int lteContractCount = 5;
+        int fiveGContractCount = 0;
         Long previousPrice = 150000L;
-        String expectedJson = "{\"status\":\"SUCCESS\"}";
 
-        when(contractHourlyAvgPriceRepository.countContractsByTimeRange(any(), any()))
-                .thenReturn(contractCount);
-        when(contractHourlyAvgPriceRepository.findLatestAvgPrice(any()))
+        when(contractHourlyAvgPriceRepository.countContractsByTimeRange(any(), any(), eq("001")))
+                .thenReturn(lteContractCount);
+        when(contractHourlyAvgPriceRepository.countContractsByTimeRange(any(), any(), eq("002")))
+                .thenReturn(fiveGContractCount);
+        when(contractHourlyAvgPriceRepository.findLatestAvgPrice(any(), eq("002")))
                 .thenReturn(previousPrice);
-        when(objectMapper.writeValueAsString(any(AggregationStatusMessage.class)))
-                .thenReturn(expectedJson);
 
         // when
-        contractAggregationScheduler.aggregateHourlyAvgPrice();
+        contractAggregationScheduler.handleAggregation();
 
         // then
+        // LTE는 실제 집계
         verify(contractHourlyAvgPriceRepository, times(1))
-                .countContractsByTimeRange(any(LocalDateTime.class), any(LocalDateTime.class));
-        verify(contractHourlyAvgPriceRepository, never())
-                .insertHourlyAvgPrice(any(), any());
+                .insertHourlyAvgPrice(any(LocalDateTime.class), any(LocalDateTime.class), eq("001"));
+
+        // 5G는 이전 가격 사용
         verify(contractHourlyAvgPriceRepository, times(1))
-                .findLatestAvgPrice(any(LocalDateTime.class));
+                .findLatestAvgPrice(any(LocalDateTime.class), eq("002"));
         verify(contractHourlyAvgPriceRepository, times(1))
-                .insertHourlyAvgPriceWithValue(any(LocalDateTime.class), eq(previousPrice));
+                .insertHourlyAvgPriceWithValue(any(LocalDateTime.class), eq(previousPrice), eq("002"));
 
         // Price 조회는 하지 않아야 함
         verify(priceRepository, never()).findById(any());
 
-        // Redis 메시지 발행 확인
-        verify(stringRedisTemplate, times(1))
-                .convertAndSend(eq(CONTRACT_AGGREGATION_STATUS_CHANNEL), eq(expectedJson));
+        // Redis 메시지는 1번만 발행 (성공)
+        verify(redisPublisher, times(1))
+                .publishAggregationComplete(any(LocalDateTime.class));
+        verify(redisPublisher, never())
+                .publishAggregationFailed(any());
     }
 
     @Test
-    @DisplayName("거래도 없고 이전 가격도 없는 경우 - 기본 가격 사용")
-    void aggregateHourlyAvgPrice_NoContractsNoPreviousPrice_UseDefaultPrice() throws JsonProcessingException {
+    @DisplayName("LTE와 5G 모두 거래가 없고 이전 가격이 없는 경우 - 기본 가격 사용")
+    void handleAggregation_BothDataTypesNoPreviousPrice_UseDefaultPrice() {
         // given
         int contractCount = 0;
         Long minimumPrice = 100000L;
-        String expectedJson = "{\"status\":\"SUCCESS\"}";
 
-        // Mock Price 객체 생성
-        com.ureka.team3.utong_scheduler.price.entity.Price defaultPrice =
-                mock(com.ureka.team3.utong_scheduler.price.entity.Price.class);
+        Price defaultPrice = mock(Price.class);
         when(defaultPrice.getMinimumPrice()).thenReturn(minimumPrice);
 
-        when(contractHourlyAvgPriceRepository.countContractsByTimeRange(any(), any()))
+        when(contractHourlyAvgPriceRepository.countContractsByTimeRange(any(), any(), anyString()))
                 .thenReturn(contractCount);
-        when(contractHourlyAvgPriceRepository.findLatestAvgPrice(any()))
+        when(contractHourlyAvgPriceRepository.findLatestAvgPrice(any(), anyString()))
                 .thenReturn(null);
-        when(priceRepository.findById(eq(PRICE_ID)))
+        when(priceRepository.findById(PRICE_ID))
                 .thenReturn(Optional.of(defaultPrice));
-        when(objectMapper.writeValueAsString(any(AggregationStatusMessage.class)))
-                .thenReturn(expectedJson);
 
         // when
-        contractAggregationScheduler.aggregateHourlyAvgPrice();
+        contractAggregationScheduler.handleAggregation();
 
         // then
-        verify(contractHourlyAvgPriceRepository, times(1))
-                .countContractsByTimeRange(any(LocalDateTime.class), any(LocalDateTime.class));
-        verify(contractHourlyAvgPriceRepository, never())
-                .insertHourlyAvgPrice(any(), any());
-        verify(contractHourlyAvgPriceRepository, times(1))
-                .findLatestAvgPrice(any(LocalDateTime.class));
-        verify(contractHourlyAvgPriceRepository, times(1))
-                .insertHourlyAvgPriceWithValue(any(LocalDateTime.class), eq(minimumPrice));
+        // 두 데이터 타입 모두 기본 가격 사용
+        verify(contractHourlyAvgPriceRepository, times(2))
+                .insertHourlyAvgPriceWithValue(any(LocalDateTime.class), eq(minimumPrice), anyString());
 
-        // Price 조회 확인
-        verify(priceRepository, times(1)).findById(PRICE_ID);
+        // Price 조회는 2번 (LTE, 5G 각각)
+        verify(priceRepository, times(2)).findById(PRICE_ID);
 
-        // Redis 메시지 발행 확인
-        verify(stringRedisTemplate, times(1))
-                .convertAndSend(eq(CONTRACT_AGGREGATION_STATUS_CHANNEL), eq(expectedJson));
+        // Redis 메시지는 1번만 발행 (성공)
+        verify(redisPublisher, times(1))
+                .publishAggregationComplete(any(LocalDateTime.class));
+        verify(redisPublisher, never())
+                .publishAggregationFailed(any());
     }
 
     @Test
-    @DisplayName("기본 가격 정보가 없는 경우 - 예외 발생")
-    void aggregateHourlyAvgPrice_NoDefaultPrice_ThrowsException() throws JsonProcessingException {
+    @DisplayName("기본 가격 정보가 없는 경우 - 예외 발생 및 실패 메시지 발행")
+    void handleAggregation_NoDefaultPrice_ThrowsExceptionAndSendsFailedMessage() {
         // given
         int contractCount = 0;
-        String expectedJson = "{\"status\":\"FAILED\"}";
 
-        when(contractHourlyAvgPriceRepository.countContractsByTimeRange(any(), any()))
+        when(contractHourlyAvgPriceRepository.countContractsByTimeRange(any(), any(), anyString()))
                 .thenReturn(contractCount);
-        when(contractHourlyAvgPriceRepository.findLatestAvgPrice(any()))
+        when(contractHourlyAvgPriceRepository.findLatestAvgPrice(any(), anyString()))
                 .thenReturn(null);
-        when(priceRepository.findById(eq(PRICE_ID)))
+        when(priceRepository.findById(PRICE_ID))
                 .thenReturn(Optional.empty());
-        when(objectMapper.writeValueAsString(any(AggregationStatusMessage.class)))
-                .thenReturn(expectedJson);
 
         // when
-        contractAggregationScheduler.aggregateHourlyAvgPrice();
+        contractAggregationScheduler.handleAggregation();
 
         // then
-        verify(contractHourlyAvgPriceRepository, times(1))
-                .countContractsByTimeRange(any(LocalDateTime.class), any(LocalDateTime.class));
-        verify(contractHourlyAvgPriceRepository, times(1))
-                .findLatestAvgPrice(any(LocalDateTime.class));
-        verify(priceRepository, times(1)).findById(PRICE_ID);
+        // 실패 메시지 1번 발행
+        verify(redisPublisher, times(1))
+                .publishAggregationFailed(contains("기본 가격 정보가 없습니다"));
 
-        // 실패 메시지 발행 확인
-        verify(objectMapper, times(1)).writeValueAsString(argThat(message -> {
-            AggregationStatusMessage msg = (AggregationStatusMessage) message;
-            return "FAILED".equals(msg.getStatus()) &&
-                    msg.getMessage().contains("계약 평균가 집계 실패");
-        }));
-
-        verify(stringRedisTemplate, times(1))
-                .convertAndSend(eq(CONTRACT_AGGREGATION_STATUS_CHANNEL), eq(expectedJson));
+        // 성공 메시지는 발행되지 않아야 함
+        verify(redisPublisher, never())
+                .publishAggregationComplete(any());
     }
 
     @Test
     @DisplayName("Repository에서 예외 발생 시 - 실패 메시지 발행")
-    void aggregateHourlyAvgPrice_RepositoryException_SendsFailedMessage() throws JsonProcessingException {
+    void handleAggregation_RepositoryException_SendsFailedMessage() {
         // given
         String errorMessage = "Database connection failed";
         RuntimeException repositoryException = new RuntimeException(errorMessage);
-        String expectedJson = "{\"status\":\"FAILED\"}";
 
-        when(contractHourlyAvgPriceRepository.countContractsByTimeRange(any(), any()))
+        when(contractHourlyAvgPriceRepository.countContractsByTimeRange(any(), any(), anyString()))
                 .thenThrow(repositoryException);
-        when(objectMapper.writeValueAsString(any(AggregationStatusMessage.class)))
-                .thenReturn(expectedJson);
 
         // when
-        contractAggregationScheduler.aggregateHourlyAvgPrice();
+        contractAggregationScheduler.handleAggregation();
 
         // then
-        verify(objectMapper, times(1)).writeValueAsString(argThat(message -> {
-            AggregationStatusMessage msg = (AggregationStatusMessage) message;
-            return "FAILED".equals(msg.getStatus()) &&
-                    msg.getMessage().contains(errorMessage);
-        }));
+        verify(redisPublisher, times(1))
+                .publishAggregationFailed(errorMessage);
 
-        verify(stringRedisTemplate, times(1))
-                .convertAndSend(eq(CONTRACT_AGGREGATION_STATUS_CHANNEL), eq(expectedJson));
+        // 성공 메시지는 발행되지 않아야 함
+        verify(redisPublisher, never())
+                .publishAggregationComplete(any());
     }
 
     @Test
-    @DisplayName("Redis 메시지 발행 실패 시 - 예외 전파하지 않음")
-    void aggregateHourlyAvgPrice_RedisPublishFailed_DoesNotThrow() throws JsonProcessingException {
-        // given
-        int contractCount = 3;
-
-        when(contractHourlyAvgPriceRepository.countContractsByTimeRange(any(), any()))
-                .thenReturn(contractCount);
-        when(objectMapper.writeValueAsString(any(AggregationStatusMessage.class)))
-                .thenThrow(new JsonProcessingException("JSON serialization failed") {});
-
-        // when & then (예외가 발생하지 않아야 함)
-        assertDoesNotThrow(() -> contractAggregationScheduler.aggregateHourlyAvgPrice());
-
-        // Repository 메서드는 정상 호출되어야 함
-        verify(contractHourlyAvgPriceRepository, times(1))
-                .insertHourlyAvgPrice(any(LocalDateTime.class), any(LocalDateTime.class));
-    }
-
-    @Test
-    @DisplayName("성공 메시지 내용 검증")
-    void publishAggregationComplete_MessageContent() throws Exception {
-        // given
-        LocalDateTime testTime = LocalDateTime.of(2025, 7, 17, 18, 0, 0);
-        String expectedJson = "{\"status\":\"SUCCESS\"}";
-
-        when(objectMapper.writeValueAsString(any(AggregationStatusMessage.class)))
-                .thenReturn(expectedJson);
-
-        // when
-        ReflectionTestUtils.invokeMethod(
-                contractAggregationScheduler,
-                "publishAggregationComplete",
-                testTime
-        );
-
-        // then
-        verify(objectMapper).writeValueAsString(argThat(message -> {
-            AggregationStatusMessage msg = (AggregationStatusMessage) message;
-            return "SUCCESS".equals(msg.getStatus()) &&
-                    testTime.equals(msg.getAggregatedAt()) &&
-                    "계약 평균가 집계 완료".equals(msg.getMessage()) &&
-                    msg.getPublishedAt() != null;
-        }));
-
-        verify(stringRedisTemplate).convertAndSend(
-                eq(CONTRACT_AGGREGATION_STATUS_CHANNEL),
-                eq(expectedJson)
-        );
-    }
-
-    @Test
-    @DisplayName("실패 메시지 내용 검증")
-    void publishAggregationFailed_MessageContent() throws Exception {
-        // given
-        String errorMessage = "Test error message";
-        String expectedJson = "{\"status\":\"FAILED\"}";
-
-        when(objectMapper.writeValueAsString(any(AggregationStatusMessage.class)))
-                .thenReturn(expectedJson);
-
-        // when
-        ReflectionTestUtils.invokeMethod(
-                contractAggregationScheduler,
-                "publishAggregationFailed",
-                errorMessage
-        );
-
-        // then
-        verify(objectMapper).writeValueAsString(argThat(message -> {
-            AggregationStatusMessage msg = (AggregationStatusMessage) message;
-            return "FAILED".equals(msg.getStatus()) &&
-                    msg.getAggregatedAt() == null &&
-                    msg.getMessage().contains("계약 평균가 집계 실패") &&
-                    msg.getMessage().contains(errorMessage) &&
-                    msg.getPublishedAt() != null;
-        }));
-
-        verify(stringRedisTemplate).convertAndSend(
-                eq(CONTRACT_AGGREGATION_STATUS_CHANNEL),
-                eq(expectedJson)
-        );
-    }
-
-    @Test
-    @DisplayName("시간 계산 로직 검증")
-    void aggregateHourlyAvgPrice_TimeCalculation() {
+    @DisplayName("시간 계산 로직 검증 - 정각으로 계산되는지 확인")
+    void handleAggregation_TimeCalculation_UsesCorrectHours() {
         // given
         int contractCount = 1;
 
-        when(contractHourlyAvgPriceRepository.countContractsByTimeRange(any(), any()))
+        when(contractHourlyAvgPriceRepository.countContractsByTimeRange(any(), any(), anyString()))
                 .thenReturn(contractCount);
 
         // when
-        contractAggregationScheduler.aggregateHourlyAvgPrice();
+        contractAggregationScheduler.handleAggregation();
 
         // then
-        verify(contractHourlyAvgPriceRepository).countContractsByTimeRange(
+        // LTE와 5G 각각에 대해 시간 계산 확인
+        verify(contractHourlyAvgPriceRepository, times(2)).countContractsByTimeRange(
                 argThat(previousHour ->
                         previousHour.getMinute() == 0 &&
                                 previousHour.getSecond() == 0 &&
@@ -331,10 +225,11 @@ class ContractAggregationSchedulerTest {
                         currentHour.getMinute() == 0 &&
                                 currentHour.getSecond() == 0 &&
                                 currentHour.getNano() == 0
-                )
+                ),
+                anyString()
         );
 
-        verify(contractHourlyAvgPriceRepository).insertHourlyAvgPrice(
+        verify(contractHourlyAvgPriceRepository, times(2)).insertHourlyAvgPrice(
                 argThat(previousHour ->
                         previousHour.getMinute() == 0 &&
                                 previousHour.getSecond() == 0 &&
@@ -344,42 +239,120 @@ class ContractAggregationSchedulerTest {
                         currentHour.getMinute() == 0 &&
                                 currentHour.getSecond() == 0 &&
                                 currentHour.getNano() == 0
-                )
+                ),
+                anyString()
         );
+    }
+
+    @Test
+    @DisplayName("데이터 코드별 처리 확인")
+    void handleAggregation_DataCodeHandling_ProcessesBothLteAnd5G() {
+        // given
+        int contractCount = 3;
+
+        when(contractHourlyAvgPriceRepository.countContractsByTimeRange(any(), any(), anyString()))
+                .thenReturn(contractCount);
+
+        // when
+        contractAggregationScheduler.handleAggregation();
+
+        // then
+        // LTE(001) 처리 확인
+        verify(contractHourlyAvgPriceRepository, times(1))
+                .countContractsByTimeRange(any(), any(), eq("001"));
+        verify(contractHourlyAvgPriceRepository, times(1))
+                .insertHourlyAvgPrice(any(), any(), eq("001"));
+
+        // 5G(002) 처리 확인
+        verify(contractHourlyAvgPriceRepository, times(1))
+                .countContractsByTimeRange(any(), any(), eq("002"));
+        verify(contractHourlyAvgPriceRepository, times(1))
+                .insertHourlyAvgPrice(any(), any(), eq("002"));
+
+        // 성공 메시지 1번만 발행
+        verify(redisPublisher, times(1))
+                .publishAggregationComplete(any(LocalDateTime.class));
     }
 
     @Test
     @DisplayName("currentHour를 aggregatedAt으로 사용하는지 검증")
-    void aggregateHourlyAvgPrice_UsesCurrentHourAsAggregatedAt() throws Exception {
+    void handleAggregation_UsesCurrentHourAsAggregatedAt() {
         // given
         int contractCount = 0;
         Long previousPrice = 150000L;
 
-        when(contractHourlyAvgPriceRepository.countContractsByTimeRange(any(), any()))
+        when(contractHourlyAvgPriceRepository.countContractsByTimeRange(any(), any(), anyString()))
                 .thenReturn(contractCount);
-        when(contractHourlyAvgPriceRepository.findLatestAvgPrice(any()))
+        when(contractHourlyAvgPriceRepository.findLatestAvgPrice(any(), anyString()))
                 .thenReturn(previousPrice);
 
         // when
-        contractAggregationScheduler.aggregateHourlyAvgPrice();
+        contractAggregationScheduler.handleAggregation();
 
         // then
-        verify(contractHourlyAvgPriceRepository).insertHourlyAvgPriceWithValue(
+        // insertHourlyAvgPriceWithValue에서 currentHour가 aggregatedAt으로 사용되는지 확인
+        verify(contractHourlyAvgPriceRepository, times(2)).insertHourlyAvgPriceWithValue(
                 argThat(aggregatedAt ->
                         aggregatedAt.getMinute() == 0 &&
                                 aggregatedAt.getSecond() == 0 &&
                                 aggregatedAt.getNano() == 0
                 ),
-                eq(previousPrice)
+                eq(previousPrice),
+                anyString()
         );
 
         // publishAggregationComplete도 currentHour로 호출되는지 확인
-        verify(objectMapper).writeValueAsString(argThat(message -> {
-            AggregationStatusMessage msg = (AggregationStatusMessage) message;
-            return msg.getAggregatedAt().getMinute() == 0 &&
-                    msg.getAggregatedAt().getSecond() == 0 &&
-                    msg.getAggregatedAt().getNano() == 0;
-        }));
+        verify(redisPublisher).publishAggregationComplete(
+                argThat(aggregatedAt ->
+                        aggregatedAt.getMinute() == 0 &&
+                                aggregatedAt.getSecond() == 0 &&
+                                aggregatedAt.getNano() == 0
+                )
+        );
+    }
+
+    @Test
+    @DisplayName("RedisPublisher 실패 시에도 전체 로직은 완료")
+    void handleAggregation_RedisPublisherFails_DoesNotAffectCoreLogic() {
+        // given
+        int contractCount = 2;
+
+        when(contractHourlyAvgPriceRepository.countContractsByTimeRange(any(), any(), anyString()))
+                .thenReturn(contractCount);
+        doThrow(new RuntimeException("Redis connection failed"))
+                .when(redisPublisher).publishAggregationComplete(any());
+
+        // when & then (예외가 발생하지 않아야 함)
+        assertDoesNotThrow(() -> contractAggregationScheduler.handleAggregation());
+
+        // 핵심 비즈니스 로직은 정상 실행되어야 함
+        verify(contractHourlyAvgPriceRepository, times(2))
+                .insertHourlyAvgPrice(any(), any(), anyString());
+    }
+
+    @Test
+    @DisplayName("LTE만 처리되고 5G에서 예외 발생하는 경우")
+    void handleAggregation_PartialFailure_LteSucceeds5GFails() {
+        // given
+        int lteContractCount = 3;
+
+        when(contractHourlyAvgPriceRepository.countContractsByTimeRange(any(), any(), eq("001")))
+                .thenReturn(lteContractCount);
+        when(contractHourlyAvgPriceRepository.countContractsByTimeRange(any(), any(), eq("002")))
+                .thenThrow(new RuntimeException("5G data access failed"));
+
+        // when
+        contractAggregationScheduler.handleAggregation();
+
+        // then
+        // LTE는 정상 처리되어야 함
+        verify(contractHourlyAvgPriceRepository, times(1))
+                .insertHourlyAvgPrice(any(), any(), eq("001"));
+
+        // 전체 실패로 처리되어야 함
+        verify(redisPublisher, times(1))
+                .publishAggregationFailed(contains("5G data access failed"));
+        verify(redisPublisher, never())
+                .publishAggregationComplete(any());
     }
 }
-
