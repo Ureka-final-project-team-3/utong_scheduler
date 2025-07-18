@@ -52,8 +52,8 @@ public interface ContractHourlyAvgPriceRepository extends JpaRepository<Contract
     @Query(value = """
         SELECT avg_price
         FROM contract_hourly_avg_price
-        WHERE aggregated_at < :beforeTime
-        AND (:dataCode IS NULL OR data_code = :dataCode)
+        WHERE aggregated_at <= :beforeTime
+        AND data_code = :dataCode
         ORDER BY aggregated_at DESC
         LIMIT 1
     """, nativeQuery = true)
