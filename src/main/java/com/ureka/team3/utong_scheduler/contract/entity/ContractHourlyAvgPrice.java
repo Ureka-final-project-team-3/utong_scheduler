@@ -28,4 +28,7 @@ public class ContractHourlyAvgPrice {
 
     @Column(name = "avg_price")
     private Long avgPrice;
+
+    @Column(name = "data_code", length = 3)
+    String dataCode;
 }
