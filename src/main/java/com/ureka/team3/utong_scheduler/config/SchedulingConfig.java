@@ -15,6 +15,6 @@ public class SchedulingConfig {
 
     @PostConstruct
     void init() {
-        contractAggregationScheduler.init();
+        contractAggregationScheduler.insertInitialData();
     }
 }
