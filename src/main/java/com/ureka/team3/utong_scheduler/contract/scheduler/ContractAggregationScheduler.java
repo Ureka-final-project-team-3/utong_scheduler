@@ -1,13 +1,11 @@
 package com.ureka.team3.utong_scheduler.contract.scheduler;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.ureka.team3.utong_scheduler.contract.dto.AggregationStatusMessage;
 import com.ureka.team3.utong_scheduler.contract.repository.ContractHourlyAvgPriceRepository;
 import com.ureka.team3.utong_scheduler.price.entity.Price;
 import com.ureka.team3.utong_scheduler.price.repository.PriceRepository;
+import com.ureka.team3.utong_scheduler.publisher.RedisPublisher;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,10 +19,8 @@ public class ContractAggregationScheduler {
 
     private final ContractHourlyAvgPriceRepository contractHourlyAvgPriceRepository;
     private final PriceRepository priceRepository;
-    private final StringRedisTemplate stringRedisTemplate;
-    private final ObjectMapper objectMapper;
+    private final RedisPublisher redisPublisher;
 
-    private static final String CONTRACT_AGGREGATION_STATUS_CHANNEL = "contract:aggregation:status";
     private static final String PRICE_ID = "903ee67c-71b3-432e-bbd1-aaf5d5043376";
 
     // 매시간 계약 평균가를 계산하여 저장하는 스케줄러
@@ -62,48 +58,12 @@ public class ContractAggregationScheduler {
                 }
             }
 
-            publishAggregationComplete(currentHour);
+            redisPublisher.publishAggregationComplete(currentHour);
         }
         catch (Exception e) {
             log.error("계약 평균가 집계 중 오류 발생: {}", e.getMessage());
 
-            publishAggregationFailed(e.getMessage());
-        }
-    }
-
-    private void publishAggregationComplete(LocalDateTime aggregatedAt) {
-        try {
-            AggregationStatusMessage message = AggregationStatusMessage.builder()
-                    .status("SUCCESS")
-                    .aggregatedAt(aggregatedAt)
-                    .publishedAt(LocalDateTime.now())
-                    .message("계약 평균가 집계 완료")
-                    .build();
-
-            String jsonMessage = objectMapper.writeValueAsString(message);
-            stringRedisTemplate.convertAndSend(CONTRACT_AGGREGATION_STATUS_CHANNEL, jsonMessage);
-
-            log.info("집계 완료 메시지 발행: {}", aggregatedAt);
-        } catch (Exception e) {
-            log.error("집계 완료 메시지 발행 중 오류 발생: {}", e.getMessage());
-        }
-    }
-
-    private void publishAggregationFailed(String errorMessage) {
-        try {
-            AggregationStatusMessage message = AggregationStatusMessage.builder()
-                    .status("FAILED")
-                    .aggregatedAt(null)
-                    .publishedAt(LocalDateTime.now())
-                    .message("계약 평균가 집계 실패" + errorMessage)
-                    .build();
-
-            String jsonMessage = objectMapper.writeValueAsString(message);
-            stringRedisTemplate.convertAndSend(CONTRACT_AGGREGATION_STATUS_CHANNEL, jsonMessage);
-
-            log.error("집계 실패 메시지 발행: {}", errorMessage);
-        } catch (Exception e) {
-            log.error("집계 실패 메시지 발행 중 오류 발생: {}", e.getMessage());
+            redisPublisher.publishAggregationFailed(e.getMessage());
         }
     }
 }
