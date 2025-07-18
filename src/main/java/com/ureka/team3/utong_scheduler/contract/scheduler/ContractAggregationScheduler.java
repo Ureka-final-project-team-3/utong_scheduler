@@ -4,7 +4,6 @@ import com.ureka.team3.utong_scheduler.contract.repository.ContractHourlyAvgPric
 import com.ureka.team3.utong_scheduler.price.entity.Price;
 import com.ureka.team3.utong_scheduler.price.repository.PriceRepository;
 import com.ureka.team3.utong_scheduler.publisher.RedisPublisher;
-import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -79,13 +78,32 @@ public class ContractAggregationScheduler {
     }
 
     @Transactional
-    public void init() {
+    public void insertInitialData() {
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime currentHour = now.withMinute(0).withSecond(0).withNano(0);
         LocalDateTime previousHour = now.minusHours(1).withMinute(0).withSecond(0).withNano(0);
+        LocalDateTime initialHour = currentHour.minusHours(MAX_REDIS_LIST_SIZE);
 
-        for(int i = MAX_REDIS_LIST_SIZE - 1; i >= 0; i--) {
+        int contractLteCount = contractHourlyAvgPriceRepository.countContractHourlyAvgPriceByTimeRange(
+                initialHour, currentHour, "001"
+        );
+
+        int contract5gCount = contractHourlyAvgPriceRepository.countContractHourlyAvgPriceByTimeRange(
+                initialHour, currentHour, "002"
+        );
+
+        // 없는 필드만큼 삽입
+        // LTE
+
+        int unavailableLteCount = MAX_REDIS_LIST_SIZE - contractLteCount - 1;
+        int unavailable5gCount = MAX_REDIS_LIST_SIZE - contract5gCount - 1;
+
+        for(int i = unavailableLteCount; i >= 0; i--) {
             handleAggregation(currentHour.minusHours(i), previousHour.minusHours(i), "001"); // LTE
+        }
+
+        // 5G
+        for(int i = unavailable5gCount; i >= 0; i--) {
             handleAggregation(currentHour.minusHours(i), previousHour.minusHours(i), "002"); // 5G
         }
     }

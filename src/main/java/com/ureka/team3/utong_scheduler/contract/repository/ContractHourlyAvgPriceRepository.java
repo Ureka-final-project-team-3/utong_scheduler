@@ -48,6 +48,19 @@ public interface ContractHourlyAvgPriceRepository extends JpaRepository<Contract
             @Param("dataCode") String dataCode
     );
 
+    @Query(value = """
+        SELECT COUNT(*)
+        FROM ContractHourlyAvgPrice chap
+        WHERE chap.aggregatedAt >= :previousHour
+        AND chap.aggregatedAt <= :currentHour
+        AND (:dataCode IS NULL OR chap.dataCode = :dataCode)
+    """)
+    int countContractHourlyAvgPriceByTimeRange(
+            @Param("previousHour") LocalDateTime previousHour,
+            @Param("currentHour") LocalDateTime currentHour,
+            @Param("dataCode") String dataCode
+    );
+
     // 가장 최근의 평균가를 조회하는 메서드
     @Query(value = """
         SELECT avg_price
