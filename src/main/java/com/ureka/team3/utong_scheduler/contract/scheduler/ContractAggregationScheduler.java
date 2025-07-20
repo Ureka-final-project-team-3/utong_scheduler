@@ -1,8 +1,10 @@
 package com.ureka.team3.utong_scheduler.contract.scheduler;
 
-import com.ureka.team3.utong_scheduler.contract.repository.ContractHourlyAvgPriceRepository;
-import com.ureka.team3.utong_scheduler.price.entity.Price;
-import com.ureka.team3.utong_scheduler.price.repository.PriceRepository;
+import com.ureka.team3.utong_scheduler.common.entity.Code;
+import com.ureka.team3.utong_scheduler.contract.config.DataTradePolicy;
+import com.ureka.team3.utong_scheduler.contract.dto.AvgPerHour;
+import com.ureka.team3.utong_scheduler.contract.service.AggregationService;
+import com.ureka.team3.utong_scheduler.contract.service.CurrentPriceService;
 import com.ureka.team3.utong_scheduler.publisher.RedisPublisher;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -11,100 +13,69 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 @Component
 @RequiredArgsConstructor
 @Slf4j
 public class ContractAggregationScheduler {
 
-    private final ContractHourlyAvgPriceRepository contractHourlyAvgPriceRepository;
-    private final PriceRepository priceRepository;
     private final RedisPublisher redisPublisher;
-
-    private static final String PRICE_ID = "903ee67c-71b3-432e-bbd1-aaf5d5043376";
-    private static final int MAX_REDIS_LIST_SIZE = 8;
+    private final DataTradePolicy dataTradePolicy;
+    private final AggregationService aggregationService;
+    private final CurrentPriceService currentPriceService;
 
     // 매시간 계약 평균가를 계산하여 저장하는 스케줄러
     @Scheduled(cron = "0 0 * * * *")
     @Transactional
     public void handleAggregation() {
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime currentHour = now.withMinute(0).withSecond(0).withNano(0);
+        LocalDateTime previousHour = currentHour.minusHours(1);
+
+
         try {
-            log.info("계약 평균가 집계 시작");
+            Map<String, List<AvgPerHour>> dataMap = new HashMap<>();
 
-            // 현재 시간과 1시간 전 시간 계산
-            LocalDateTime now = LocalDateTime.now();
-            LocalDateTime currentHour = now.withMinute(0).withSecond(0).withNano(0);
-            LocalDateTime previousHour = now.minusHours(1).withMinute(0).withSecond(0).withNano(0);
+            for (Code code : dataTradePolicy.getDataTypeCodeList()) {
+                String dataCode = code.getCode();
 
+                aggregationService.aggregateHourly(currentHour, previousHour, dataCode);
+                currentPriceService.updateRedisCache(currentHour);
 
+                List<AvgPerHour> updatedData = currentPriceService.getUpdatedData(dataCode);
+                dataMap.put(dataCode, updatedData);
+            }
 
-            handleAggregation(currentHour, previousHour, "001"); // LTE
-            handleAggregation(currentHour, previousHour, "002"); // 5G
+            // ✅ 하나의 메시지로 여러 코드 데이터 전송
+            redisPublisher.publishAggregationComplete(currentHour, dataMap);
 
-            redisPublisher.publishAggregationComplete(currentHour);
-        }
-        catch (Exception e) {
-            log.error("계약 평균가 집계 중 오류 발생: {}", e.getMessage());
-
+        } catch (Exception e) {
+            log.error("계약 평균가 집계 중 오류 발생: {}", e.getMessage(), e);
             redisPublisher.publishAggregationFailed(e.getMessage());
         }
-    }
-
-    @Transactional
-    public void handleAggregation(LocalDateTime currentHour, LocalDateTime previousHour, String dataCode) {
-        // 해당 시간대 거래 건수 확인
-        int contractCount = contractHourlyAvgPriceRepository.countContractsByTimeRange(previousHour, currentHour, dataCode);
-
-        // 평균가 계산 및 저장
-        if (contractCount > 0) { // 최근 1시간 거래가 있는 경우
-            contractHourlyAvgPriceRepository.insertHourlyAvgPrice(previousHour, currentHour, dataCode);
-            log.info("계약 평균가 집계 완료: {}건, {} ~ {}, 데이터 유형 : {}", contractCount, previousHour, currentHour, dataCode.equals("001") ? "LTE" : "5G");
-        } else { // 최근 1시간 거래가 없는 경우 -> 이전 시간의 평균가 중 가장 가까운 시간의 평균가를 사용
-            Long previousPrice = contractHourlyAvgPriceRepository.findLatestAvgPrice(previousHour, dataCode);
-
-            if(previousPrice != null) {
-                contractHourlyAvgPriceRepository.insertHourlyAvgPriceWithValue(currentHour, previousPrice, dataCode);
-                log.info("이전 가격 기반 집계 완료: {} 원, 데이터 유형 : {}", previousPrice, dataCode.equals("001") ? "LTE" : "5G");
-            }
-            else { // 아무 거래도 없는 경우
-                Price price = priceRepository.findById(PRICE_ID)
-                        .orElseThrow(() -> new RuntimeException("기본 가격 정보가 없습니다."));
-
-                contractHourlyAvgPriceRepository.insertHourlyAvgPriceWithValue(currentHour, price.getMinimumPrice(), dataCode);
-                log.info("기본 가격 기반 집계 완료: {} 원, 데이터 유형 : {}", price.getMinimumPrice(), dataCode.equals("001") ? "LTE" : "5G");
-            }
-        }
-
     }
 
     @Transactional
     public void insertInitialData() {
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime currentHour = now.withMinute(0).withSecond(0).withNano(0);
-        LocalDateTime previousHour = now.minusHours(1).withMinute(0).withSecond(0).withNano(0);
-        LocalDateTime initialHour = currentHour.minusHours(MAX_REDIS_LIST_SIZE);
+        LocalDateTime previousHour = currentHour.minusHours(1);
+        LocalDateTime initialHour = currentHour.minusHours(DataTradePolicy.CHART_LIST_SIZE);
 
-        int contractLteCount = contractHourlyAvgPriceRepository.countContractHourlyAvgPriceByTimeRange(
-                initialHour, currentHour, "001"
-        );
+        for (Code code : dataTradePolicy.getDataTypeCodeList()) {
+            int count = aggregationService.getDataCountInRange(initialHour, currentHour, code.getCode());
+            int insertCount = DataTradePolicy.CHART_LIST_SIZE - count - 1;
 
-        int contract5gCount = contractHourlyAvgPriceRepository.countContractHourlyAvgPriceByTimeRange(
-                initialHour, currentHour, "002"
-        );
-
-        // 없는 필드만큼 삽입
-        // LTE
-
-        int unavailableLteCount = MAX_REDIS_LIST_SIZE - contractLteCount - 1;
-        int unavailable5gCount = MAX_REDIS_LIST_SIZE - contract5gCount - 1;
-
-        for(int i = unavailableLteCount; i >= 0; i--) {
-            handleAggregation(currentHour.minusHours(i), previousHour.minusHours(i), "001"); // LTE
-        }
-
-        // 5G
-        for(int i = unavailable5gCount; i >= 0; i--) {
-            handleAggregation(currentHour.minusHours(i), previousHour.minusHours(i), "002"); // 5G
+            for (int i = insertCount; i >= 0; i--) {
+                aggregationService.aggregateHourly(
+                        currentHour.minusHours(i),
+                        previousHour.minusHours(i),
+                        code.getCode()
+                );
+            }
         }
     }
 }
