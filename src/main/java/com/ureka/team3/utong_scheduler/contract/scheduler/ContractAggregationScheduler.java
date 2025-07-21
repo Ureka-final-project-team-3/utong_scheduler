@@ -43,7 +43,7 @@ public class ContractAggregationScheduler {
                 String dataCode = code.getCode();
 
                 aggregationService.aggregateHourly(currentHour, previousHour, dataCode);
-                currentPriceService.updateRedisCache(currentHour);
+                currentPriceService.updateRedisCache(dataCode,currentHour);
 
                 List<AvgPerHour> updatedData = currentPriceService.getUpdatedData(dataCode);
                 dataMap.put(dataCode, updatedData);

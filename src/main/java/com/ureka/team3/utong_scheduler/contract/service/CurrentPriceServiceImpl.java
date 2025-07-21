@@ -28,10 +28,9 @@ public class CurrentPriceServiceImpl implements CurrentPriceService {
     private final DataTradePolicy dataTradePolicy;
 
     @Override
-    public void updateRedisCache(LocalDateTime aggregatedAt) {
-        for (String dataCode : getDataTypeCodes()) {
+    public void updateRedisCache(String dataCode, LocalDateTime aggregatedAt) {
             updateByDataCode(dataCode, aggregatedAt);
-        }
+
     }
 
     private void updateByDataCode(String dataCode, LocalDateTime aggregatedAt) {

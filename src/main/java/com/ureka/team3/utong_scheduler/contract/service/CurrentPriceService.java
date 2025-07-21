@@ -8,7 +8,7 @@ import java.util.List;
 
 public interface CurrentPriceService {
 
-    void updateRedisCache(LocalDateTime aggregatedAt);
+    void updateRedisCache(String dataCode, LocalDateTime aggregatedAt);
 
     List<AvgPerHour> getUpdatedData(String dataCode);
 }
