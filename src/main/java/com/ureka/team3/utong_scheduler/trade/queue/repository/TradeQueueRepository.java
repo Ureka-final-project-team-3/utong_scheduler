@@ -13,4 +13,7 @@ public interface TradeQueueRepository {
 
     void saveAllSellOrdersNumber(String dataCode, Map<Long, Long> sellOrderQuantity);
     void saveAllBuyOrdersNumber(String dataCode, Map<Long, Long> buyOrderQuantity);
+
+    void eraseAllSellOrdersNumber(String dataCode);
+    void eraseAllBuyOrdersNumber(String dataCode);
 }

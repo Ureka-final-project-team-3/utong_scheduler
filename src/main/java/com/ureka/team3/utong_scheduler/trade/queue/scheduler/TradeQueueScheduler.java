@@ -48,7 +48,7 @@ public class TradeQueueScheduler {
             }
 
             // 하나의 메시지로 여러 코드 데이터 전송
-            tradeQueueService.saveAllOrdersNumber(dataMap);
+            tradeQueueService.initAllOrdersNumber(dataMap);
             tradeQueuePublisher.publish(LocalDateTime.now(),dataMap);
 
         } catch (Exception e) {

@@ -52,10 +52,14 @@ public class TradeQueueServiceImpl implements TradeQueueService {
     }
 
     @Override
-    public void saveAllOrdersNumber(Map<String, OrdersQueueDto> dataMap) {
+    public void initAllOrdersNumber(Map<String, OrdersQueueDto> dataMap) {
         for (Code code : dataTradePolicy.getDataTypeCodeList()) {
             String dataCode = code.getCode();
             OrdersQueueDto ordersQueueDto = dataMap.get(dataCode);
+
+            tradeQueueRepository.eraseAllSellOrdersNumber(dataCode);
+            tradeQueueRepository.eraseAllBuyOrdersNumber(dataCode);
+
             tradeQueueRepository.saveAllBuyOrdersNumber(dataCode,ordersQueueDto.getBuyOrderQuantity());
             tradeQueueRepository.saveAllSellOrdersNumber(dataCode, ordersQueueDto.getSellOrderQuantity());
 

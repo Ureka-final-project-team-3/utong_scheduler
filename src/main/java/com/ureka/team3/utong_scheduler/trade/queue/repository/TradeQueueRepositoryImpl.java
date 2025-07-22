@@ -56,6 +56,30 @@ public class TradeQueueRepositoryImpl implements TradeQueueRepository {
         stringRedisTemplate.opsForHash().putAll(key, hashMap);
     }
 
+    @Override
+    public void eraseAllSellOrdersNumber(String dataCode) {
+        String key = "sell:numbers:" + dataCode;
+
+        if (stringRedisTemplate.hasKey(key)) {
+            stringRedisTemplate.delete(key);
+            log.info("모든 판매 주문 수량 삭제 완료: {}", key);
+        } else {
+            log.warn("판매 주문 수량 키가 존재하지 않음: {}", key);
+        }
+    }
+
+    @Override
+    public void eraseAllBuyOrdersNumber(String dataCode) {
+        String key = "buy:numbers:" + dataCode;
+
+        if (stringRedisTemplate.hasKey(key)) {
+            stringRedisTemplate.delete(key);
+            log.info("모든 구매 주문 수량 삭제 완료: {}", key);
+        } else {
+            log.warn("구매 주문 수량 키가 존재하지 않음: {}", key);
+        }
+    }
+
     private Map<Long, List<OrderDto>> findAllOrdersByPattern(String keyPattern) {
         Set<String> keys = stringRedisTemplate.keys(keyPattern);
         if (keys == null || keys.isEmpty()) return Map.of();
