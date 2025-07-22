@@ -3,9 +3,10 @@ package com.ureka.team3.utong_scheduler.trade.queue.scheduler;
 import com.ureka.team3.utong_scheduler.common.entity.Code;
 import com.ureka.team3.utong_scheduler.publisher.TradeQueuePublisher;
 import com.ureka.team3.utong_scheduler.trade.global.config.DataTradePolicy;
+import com.ureka.team3.utong_scheduler.trade.queue.dto.ContractDto;
 import com.ureka.team3.utong_scheduler.trade.queue.dto.OrdersQueueDto;
+import com.ureka.team3.utong_scheduler.trade.queue.service.ContractQueueService;
 import com.ureka.team3.utong_scheduler.trade.queue.service.TradeQueueService;
-import com.ureka.team3.utong_scheduler.publisher.AggregationPublisher;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -14,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @Component
@@ -22,6 +24,7 @@ import java.util.Map;
 public class TradeQueueScheduler {
 
     private final TradeQueuePublisher tradeQueuePublisher;
+    private final ContractQueueService contractQueueService;
     private final DataTradePolicy dataTradePolicy;
     private final TradeQueueService tradeQueueService;
 
@@ -40,15 +43,21 @@ public class TradeQueueScheduler {
                 String dataCode = code.getCode();
                 Map<Long, Long> allBuyOrderNumbers = tradeQueueService.getAllBuyOrderNumbers(dataCode);
                 Map<Long, Long> allSellOrderNumbers = tradeQueueService.getAllSellOrderNumbers(dataCode);
+
+                List<ContractDto> recentContracts = contractQueueService.getRecentContracts(dataCode);
+
                 dataMap.put(dataCode,OrdersQueueDto.builder()
                         .buyOrderQuantity(allBuyOrderNumbers)
                         .sellOrderQuantity(allSellOrderNumbers)
+                        .recentContracts(recentContracts)
                         .build()
                 );
             }
 
             // 하나의 메시지로 여러 코드 데이터 전송
             tradeQueueService.initAllOrdersNumber(dataMap);
+            contractQueueService.initAllRecentContracts();
+
             tradeQueuePublisher.publish(LocalDateTime.now(),dataMap);
 
         } catch (Exception e) {

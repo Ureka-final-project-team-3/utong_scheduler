@@ -18,6 +18,8 @@ public class RedisKeyUtil {
         return CURRENT_PRICE_PREFIX + ":" + dataCode;
     }
 
+    public static String buildContractListKey(String dataCode) { return "contract_list:" + dataCode; }
+
     public static String buildSellZSetKey(String dataCode) {
         return ORDER_BOOK_PREFIX + ":sell:" + dataCode;
     }

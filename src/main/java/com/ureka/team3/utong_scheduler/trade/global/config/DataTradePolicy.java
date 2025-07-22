@@ -18,6 +18,7 @@ public class DataTradePolicy {
     private List<Code> tradeStatusCodeList;
     private List<Code> dataTypeCodeList;
     public static final int CHART_LIST_SIZE = 8;
+    public static final int CONTRACT_LIST_SIZE = 20;
     public static final Long SSE_TIMEOUT = 60 * 60 * 1000L;
 
 
