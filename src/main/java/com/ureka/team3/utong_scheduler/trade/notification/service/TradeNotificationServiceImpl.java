@@ -93,9 +93,9 @@ public class TradeNotificationServiceImpl implements TradeNotificationService{
             </html>
             """.formatted(
                 contractType.getDescription(),
+                contractType.getDescription(),
                 nickname != null ? nickname : "테스터",
                 LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy년 MM월 dd일 HH:mm:ss")),
-                contractType.getDescription(),
                 contractType.getDescription()
         );
     }
