@@ -24,7 +24,7 @@ public class TradeNotificationController {
             @RequestParam(value = "nickname", required = false) String nickname,
             @RequestParam("contractType") String contractType
     ) {
-        log.info("HTML 메일 요청 - 수신자: {}, 사용자명: {}, 계약 유형: {}", to, nickname, contractType);
+        log.info("HTML 메일 요청 - 수신: {}, 사용자명: {}, 계약 유형: {}", to, nickname, contractType);
 
         boolean success = tradeNotificationService.sendContractCompleteMessage(
                 to,
