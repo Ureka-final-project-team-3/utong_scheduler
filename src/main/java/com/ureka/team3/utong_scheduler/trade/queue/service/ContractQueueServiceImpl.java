@@ -29,7 +29,7 @@ public class ContractQueueServiceImpl implements ContractQueueService {
                 .map(Code::getCode)
                 .toList();
 
-        for(Code code : dataTradePolicy.getDataTypeCodeList()) {
+        for (Code code : dataTradePolicy.getDataTypeCodeList()) {
             String dataCode = code.getCode();
             log.info("저장 시작 - dataCode: {}", dataCode);
             saveContractCacheByDataCode(dataCode);
@@ -48,7 +48,7 @@ public class ContractQueueServiceImpl implements ContractQueueService {
                     .map(contract -> ContractDto.of(contract, dataCode))
                     .toList();
 
-            if(recentContracts.isEmpty()) {
+            if (recentContracts.isEmpty()) {
                 log.info("저장할 계약 데이터가 없습니다. dataCode: {}", dataCode);
 
                 contractQueueRepository.saveBatchContracts(dataCode, recentContracts);
@@ -66,14 +66,25 @@ public class ContractQueueServiceImpl implements ContractQueueService {
     @Override
     public List<ContractDto> getRecentContracts(String dataCode) {
         try {
-            List<ContractDto> cachedContracts = contractQueueRepository.getAllCachedContracts(dataCode);
-
-            log.debug("캐시된 계약 데이터 조회 - dataCode: {}, 계약 수: {}", dataCode, cachedContracts.size());
-            return cachedContracts;
+            return contractQueueRepository.getAllCachedContracts(dataCode);
         } catch (Exception e) {
-            log.error("계약 캐시 조회 중 오류 발생 - dataCode: {}, error: {}", dataCode, e.getMessage(), e);
-            return List.of(); // 빈 리스트 반환
+            log.error("계약 캐시 조회 중 오류 발생 -  error: {}", e.getMessage(), e);
+            return null;
         }
+    }
+
+    @Override
+    public void addNewContracts(String dataCode, List<ContractDto> newContracts) {
+        if (newContracts == null || newContracts.isEmpty()) return;
+
+        newContracts.forEach(contractDto -> {
+            try {
+                log.debug("새로운 계약 캐시에 추가 - dataCode: {}", dataCode);
+                contractQueueRepository.saveNewContract(dataCode, contractDto);
+            } catch (Exception e) {
+                log.error("신규 계약 저장 중 오류 발생 - dataCode: {}, error: {}", dataCode, e.getMessage(), e);
+            }
+        });
     }
 
 }

@@ -16,4 +16,9 @@ public interface TradeQueueRepository {
 
     void eraseAllSellOrdersNumber(String dataCode);
     void eraseAllBuyOrdersNumber(String dataCode);
+
+    void changeCurrentSellOrderQuantity(String dataCode, Long price, Long amount);
+
+    void changeCurrentBuyOrderQuantity(String dataCode, Long price, Long amount);
+
 }

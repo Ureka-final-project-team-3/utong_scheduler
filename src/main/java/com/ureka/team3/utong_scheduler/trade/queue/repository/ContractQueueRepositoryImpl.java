@@ -53,6 +53,15 @@ public class ContractQueueRepositoryImpl implements ContractQueueRepository{
             log.error("배치 캐시 초기화 실패 - dataCode: {}, error: {}", dataCode, e.getMessage(), e);
         }
     }
+
+    @Override
+    public void saveNewContract(String dataCode, ContractDto contract) {
+        String redisKey = getRedisKey(dataCode);
+        String serialized = serialize(contract);
+        stringRedisTemplate.opsForList().leftPush(redisKey, serialized);
+        stringRedisTemplate.opsForList().trim(redisKey, 0, DataTradePolicy.CONTRACT_LIST_SIZE - 1);
+    }
+
     @Override
     public List<ContractDto> getAllCachedContracts(String dataCode) {
         try {
@@ -81,6 +90,18 @@ public class ContractQueueRepositoryImpl implements ContractQueueRepository{
         } catch (Exception e) {
             log.error("캐시된 계약 데이터 조회 실패 - dataCode: {}, error: {}", dataCode, e.getMessage(), e);
             return new ArrayList<>();
+        }
+    }
+
+    private String getRedisKey(String dataCode) {
+        return "contract:recent:" + dataCode;
+    }
+
+    private String serialize(ContractDto dto) {
+        try {
+            return objectMapper.writeValueAsString(dto);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("Serialization failed", e);
         }
     }
 }

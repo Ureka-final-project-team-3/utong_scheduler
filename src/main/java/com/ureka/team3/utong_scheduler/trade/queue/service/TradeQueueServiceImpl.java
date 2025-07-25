@@ -8,6 +8,7 @@ import com.ureka.team3.utong_scheduler.trade.queue.repository.TradeQueueReposito
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
@@ -62,7 +63,29 @@ public class TradeQueueServiceImpl implements TradeQueueService {
 
             tradeQueueRepository.saveAllBuyOrdersNumber(dataCode,ordersQueueDto.getBuyOrderQuantity());
             tradeQueueRepository.saveAllSellOrdersNumber(dataCode, ordersQueueDto.getSellOrderQuantity());
+        }
+    }
 
+    @Override
+    public void saveAllOrdersNumber(Map<String, OrdersQueueDto> dataMap) {
+
+    }
+
+
+    @Override
+    public void changeCurrentDataAmount(String dataCode, long price, long sellChangeNumber, long purchaseChangeNumber){
+        tradeQueueRepository.changeCurrentBuyOrderQuantity(dataCode,price, purchaseChangeNumber);
+        tradeQueueRepository.changeCurrentSellOrderQuantity(dataCode,price,sellChangeNumber);
+    }
+
+    @Override
+    public void init() {
+        for (Code code : dataTradePolicy.getDataTypeCodeList()) {
+            Map<Long, Long> allBuyOrderNumbers = getAllBuyOrderNumbers(code.getCode());
+            Map<Long, Long> allSellOrderNumbers = getAllSellOrderNumbers(code.getCode());
+
+            tradeQueueRepository.saveAllBuyOrdersNumber(code.getCode(),allBuyOrderNumbers);
+            tradeQueueRepository.saveAllSellOrdersNumber(code.getCode(), allSellOrderNumbers);
         }
     }
 }

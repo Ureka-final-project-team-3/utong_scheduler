@@ -80,6 +80,18 @@ public class TradeQueueRepositoryImpl implements TradeQueueRepository {
         }
     }
 
+    @Override
+    public void changeCurrentSellOrderQuantity(String dataCode, Long price, Long amount) {
+        String key = "sell:numbers:" + dataCode;
+        stringRedisTemplate.opsForHash().increment(key, price.toString(), amount);
+    }
+
+    @Override
+    public void changeCurrentBuyOrderQuantity(String dataCode, Long price, Long amount) {
+        String key = "buy:numbers:" + dataCode;
+        stringRedisTemplate.opsForHash().increment(key, price.toString(), amount);
+    }
+
     private Map<Long, List<OrderDto>> findAllOrdersByPattern(String keyPattern) {
         Set<String> keys = stringRedisTemplate.keys(keyPattern);
         if (keys == null || keys.isEmpty()) return Map.of();
