@@ -30,7 +30,10 @@ public class TradeQueueServiceImpl implements TradeQueueService {
                     .mapToLong(OrderDto::getQuantity)
                     .sum();
 
-            quantityByPrice.put(price, sum);
+            if(sum > 0L){
+                quantityByPrice.put(price, sum);
+            }
+
         }
 
         return quantityByPrice;
@@ -46,7 +49,10 @@ public class TradeQueueServiceImpl implements TradeQueueService {
                     .mapToLong(OrderDto::getQuantity)
                     .sum();
 
-            quantityByPrice.put(price, sum);
+            if(sum>0L){
+                quantityByPrice.put(price, sum);
+            }
+
         }
 
         return quantityByPrice;
