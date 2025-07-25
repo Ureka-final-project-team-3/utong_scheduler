@@ -21,4 +21,7 @@ public interface TradeQueueRepository {
 
     void changeCurrentBuyOrderQuantity(String dataCode, Long price, Long amount);
 
+    Map<Long, Long> getAllBuyOrderQuantities(String dataCode);
+
+    Map<Long, Long> getAllSellOrderQuantities(String dataCode);
 }

@@ -8,7 +8,6 @@ import com.ureka.team3.utong_scheduler.trade.queue.repository.TradeQueueReposito
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
@@ -56,6 +55,16 @@ public class TradeQueueServiceImpl implements TradeQueueService {
         }
 
         return quantityByPrice;
+    }
+
+    @Override
+    public Map<Long, Long> getAllBuyOrderCachedNumbers(String dataCode) {
+        return tradeQueueRepository.getAllBuyOrderQuantities(dataCode);
+    }
+
+    @Override
+    public Map<Long, Long> getAllSellOrderCachedNumbers(String dataCode) {
+        return tradeQueueRepository.getAllSellOrderQuantities(dataCode);
     }
 
     @Override

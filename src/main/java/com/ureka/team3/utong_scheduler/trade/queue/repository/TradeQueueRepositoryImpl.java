@@ -99,6 +99,28 @@ public class TradeQueueRepositoryImpl implements TradeQueueRepository {
         stringRedisTemplate.opsForHash().increment(key, price.toString(), amount);
     }
 
+    @Override
+    public Map<Long, Long> getAllBuyOrderQuantities(String dataCode) {
+        String key = "buy:numbers:" + dataCode;
+        Map<Object, Object> entries = stringRedisTemplate.opsForHash().entries(key);
+
+        return entries.entrySet().stream()
+                .map(e -> Map.entry(Long.parseLong(e.getKey().toString()), Long.parseLong(e.getValue().toString())))
+                .filter(e -> e.getValue() > 0) // 수량이 0 초과인 경우만
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+    }
+
+    @Override
+    public Map<Long, Long> getAllSellOrderQuantities(String dataCode) {
+        String key = "sell:numbers:" + dataCode;
+        Map<Object, Object> entries = stringRedisTemplate.opsForHash().entries(key);
+
+        return entries.entrySet().stream()
+                .map(e -> Map.entry(Long.parseLong(e.getKey().toString()), Long.parseLong(e.getValue().toString())))
+                .filter(e -> e.getValue() > 0) // 수량이 0 초과인 경우만
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+    }
+
     private Map<Long, List<OrderDto>> findAllOrdersByPattern(String keyPattern) {
         Set<String> keys = stringRedisTemplate.keys(keyPattern);
         if (keys == null || keys.isEmpty()) return Map.of();
