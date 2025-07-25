@@ -34,6 +34,8 @@ public class TradeQueueRepositoryImpl implements TradeQueueRepository {
     public void saveAllSellOrdersNumber(String dataCode, Map<Long, Long> sellOrderQuantity) {
         String key = "sell:numbers:" + dataCode;
 
+        stringRedisTemplate.delete(key);
+
         Map<String, String> hashMap = sellOrderQuantity.entrySet().stream()
                 .collect(Collectors.toMap(
                         e -> e.getKey().toString(),
@@ -47,12 +49,17 @@ public class TradeQueueRepositoryImpl implements TradeQueueRepository {
     public void saveAllBuyOrdersNumber(String dataCode, Map<Long, Long> buyOrderQuantity) {
         String key = "buy:numbers:" + dataCode;
 
+        // 기존 데이터 초기화
+        stringRedisTemplate.delete(key);
+
+        // 저장할 데이터 변환
         Map<String, String> hashMap = buyOrderQuantity.entrySet().stream()
                 .collect(Collectors.toMap(
                         e -> e.getKey().toString(),
                         e -> e.getValue().toString()
                 ));
 
+        // 전체 저장
         stringRedisTemplate.opsForHash().putAll(key, hashMap);
     }
 
