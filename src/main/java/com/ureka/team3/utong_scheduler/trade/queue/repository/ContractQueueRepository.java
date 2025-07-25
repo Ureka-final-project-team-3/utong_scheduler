@@ -8,6 +8,8 @@ public interface ContractQueueRepository {
 
     void saveBatchContracts(String dataCode, List<ContractDto> contracts);
 
+    void saveNewContract(String dataCode, ContractDto contract); // 신규 추가
+
     List<ContractDto> getAllCachedContracts(String dataCode);
 
 }

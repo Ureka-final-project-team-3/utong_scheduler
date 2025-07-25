@@ -13,4 +13,9 @@ public interface TradeQueueService {
     Map<Long, Long> getAllBuyOrderNumbers(String dataCode);
 
     void initAllOrdersNumber(Map<String, OrdersQueueDto> dataMap);
+    void saveAllOrdersNumber(Map<String, OrdersQueueDto> dataMap);
+
+    void changeCurrentDataAmount(String dataCode, long price, long sellChangeNumber, long purchaseChangeNumber);
+
+    void init();
 }
