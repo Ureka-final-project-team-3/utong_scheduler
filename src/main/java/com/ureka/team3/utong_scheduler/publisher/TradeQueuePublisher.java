@@ -16,7 +16,7 @@ import java.util.Map;
 @Component
 @RequiredArgsConstructor
 public class TradeQueuePublisher implements RedisPublisher<Map<String, OrdersQueueDto>> {
-    private static final String QUEUE_AGGREGATION_STATUS_CHANNEL = "queue:aggregation:status1";
+    private static final String QUEUE_AGGREGATION_STATUS_CHANNEL = "queue:aggregation:status";
     private final StringRedisTemplate stringRedisTemplate;
     private final ObjectMapper objectMapper;
 
