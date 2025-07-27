@@ -1,6 +1,7 @@
 spring:
   application:
     name: utong_scheduler
+
   datasource:
     url: ${SPRING_DATASOURCE_URL}
     username: ${SPRING_DATASOURCE_USERNAME}
@@ -13,7 +14,8 @@ spring:
     redis:
       host: ${REDIS_HOST}
       port: ${REDIS_PORT}
-      password: ${REDIS_PASSWORD}
+      password: ${REDIS_PASSWORD}  # ✅ Redis 비밀번호 추가
+
   mail:
     host: smtp.gmail.com
     port: 587
@@ -25,6 +27,7 @@ spring:
           auth: true
           starttls:
             enable: true
+
 management:
   endpoints:
     web:
@@ -33,9 +36,10 @@ management:
   endpoint:
     health:
       show-details: always
+
 server:
   port: 8082
+
 logging:
   level:
     com.eureka.ip.team1: DEBUG
-
