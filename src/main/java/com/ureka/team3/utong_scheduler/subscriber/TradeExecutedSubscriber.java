@@ -45,11 +45,11 @@ public class TradeExecutedSubscriber implements MessageListener {   // 평균 �
 
             Map<String,OrdersQueueDto> dataMap = new HashMap<>();
             for (Code code : dataTradePolicy.getDataTypeCodeList()) {
-                Map<Long, Long> allBuyOrderNumbers = tradeQueueService.getAllSellOrderCachedNumbers(code.getCode());
+                Map<Long, Long> allBuyOrderNumbers = tradeQueueService.getAllBuyOrderCachedNumbers(code.getCode());
                 Map<Long, Long> allSellOrderNumbers = tradeQueueService.getAllSellOrderCachedNumbers(code.getCode());
                 List<ContractDto> recentContracts = contractQueueService.getRecentContracts(code.getCode());
 
-                dataMap.put(dataCode,OrdersQueueDto.builder()
+                dataMap.put(code.getCode(),OrdersQueueDto.builder()
                         .buyOrderQuantity(allBuyOrderNumbers)
                         .sellOrderQuantity(allSellOrderNumbers)
                         .recentContracts(recentContracts)
