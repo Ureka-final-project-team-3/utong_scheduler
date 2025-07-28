@@ -2,6 +2,7 @@ package com.ureka.team3.utong_scheduler.trade.queue.dto;
 
 
 import com.ureka.team3.utong_scheduler.trade.RequestType;
+import com.ureka.team3.utong_scheduler.trade.alert.ContractDto;
 import lombok.Builder;
 import lombok.Getter;
 

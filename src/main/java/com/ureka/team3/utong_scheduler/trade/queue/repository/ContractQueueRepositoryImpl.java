@@ -4,7 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ureka.team3.utong_scheduler.trade.global.config.DataTradePolicy;
 import com.ureka.team3.utong_scheduler.trade.global.utils.RedisKeyUtil;
-import com.ureka.team3.utong_scheduler.trade.queue.dto.ContractDto;
+import com.ureka.team3.utong_scheduler.trade.alert.ContractDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;

@@ -1,4 +1,4 @@
-package com.ureka.team3.utong_scheduler.trade.queue.dto;
+package com.ureka.team3.utong_scheduler.trade.alert;
 
 import com.ureka.team3.utong_scheduler.trade.global.entity.Contract;
 import lombok.*;
@@ -9,7 +9,14 @@ import java.time.LocalDateTime;
 @ToString
 @AllArgsConstructor
 @NoArgsConstructor
-public class ContractDto {
+public class  ContractDto {
+    private String purchaseOrderId;
+
+    private String saleOrderId;
+
+    private String purchaseAccountId;
+
+    private String saleAccountId;
 
     private Long price;
 
