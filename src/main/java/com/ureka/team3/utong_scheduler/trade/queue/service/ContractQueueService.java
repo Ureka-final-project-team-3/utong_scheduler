@@ -1,7 +1,6 @@
 package com.ureka.team3.utong_scheduler.trade.queue.service;
 
-import com.ureka.team3.utong_scheduler.trade.queue.dto.AllDataContractDto;
-import com.ureka.team3.utong_scheduler.trade.queue.dto.ContractDto;
+import com.ureka.team3.utong_scheduler.trade.alert.ContractDto;
 
 import java.util.List;
 

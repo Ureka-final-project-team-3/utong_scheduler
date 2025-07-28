@@ -3,7 +3,7 @@
 //import com.ureka.team3.utong_scheduler.common.entity.Code;
 //import com.ureka.team3.utong_scheduler.publisher.TradeQueuePublisher;
 //import com.ureka.team3.utong_scheduler.trade.global.config.DataTradePolicy;
-//import com.ureka.team3.utong_scheduler.trade.queue.dto.ContractDto;
+//import com.ureka.team3.utong_scheduler.trade.alert.ContractDto;
 //import com.ureka.team3.utong_scheduler.trade.queue.dto.OrdersQueueDto;
 //import com.ureka.team3.utong_scheduler.trade.queue.service.ContractQueueService;
 //import com.ureka.team3.utong_scheduler.trade.queue.service.TradeQueueService;

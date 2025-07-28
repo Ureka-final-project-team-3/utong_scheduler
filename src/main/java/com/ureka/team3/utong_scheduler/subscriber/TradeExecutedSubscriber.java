@@ -2,10 +2,17 @@ package com.ureka.team3.utong_scheduler.subscriber;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ureka.team3.utong_scheduler.auth.service.AccountService;
 import com.ureka.team3.utong_scheduler.common.entity.Code;
+import com.ureka.team3.utong_scheduler.publisher.AlertPublisher;
 import com.ureka.team3.utong_scheduler.publisher.TradeQueuePublisher;
+import com.ureka.team3.utong_scheduler.trade.RequestType;
+import com.ureka.team3.utong_scheduler.trade.alert.AlertService;
+import com.ureka.team3.utong_scheduler.trade.alert.ContractAlertDto;
+import com.ureka.team3.utong_scheduler.trade.alert.ContractDto;
 import com.ureka.team3.utong_scheduler.trade.global.config.DataTradePolicy;
-import com.ureka.team3.utong_scheduler.trade.queue.dto.*;
+import com.ureka.team3.utong_scheduler.trade.queue.dto.OrdersQueueDto;
+import com.ureka.team3.utong_scheduler.trade.queue.dto.TradeExecutedMessage;
 import com.ureka.team3.utong_scheduler.trade.queue.service.ContractQueueService;
 import com.ureka.team3.utong_scheduler.trade.queue.service.TradeQueueService;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +35,8 @@ public class TradeExecutedSubscriber implements MessageListener {   // 평균 �
     private final TradeQueuePublisher tradeQueuePublisher;
     private final ContractQueueService contractQueueService;
     private final DataTradePolicy dataTradePolicy;
+    private final AlertService alertService;
+    private final AlertPublisher alertPublisher;
 
     @Override
     public void onMessage(Message message, byte[] pattern) {
@@ -39,28 +48,35 @@ public class TradeExecutedSubscriber implements MessageListener {   // 평균 �
             Long saleDataChange = tradeExecutedMessage.getSaleDataChange();
             Long price = tradeExecutedMessage.getPrice();
             tradeQueueService.changeCurrentDataAmount(dataCode, price, saleDataChange, purchaseDataChange);
-            if(tradeExecutedMessage.getNewContracts()!=null && !tradeExecutedMessage.getNewContracts().isEmpty()){
-                contractQueueService.addNewContracts(dataCode,tradeExecutedMessage.getNewContracts());
+            if (tradeExecutedMessage.getNewContracts() != null && !tradeExecutedMessage.getNewContracts().isEmpty()) {
+                contractQueueService.addNewContracts(dataCode, tradeExecutedMessage.getNewContracts());
+                alertPublisher.publish(LocalDateTime.now(),alertService.buildAlertMessage(tradeExecutedMessage));
             }
 
-            Map<String,OrdersQueueDto> dataMap = new HashMap<>();
+            Map<String, OrdersQueueDto> dataMap = new HashMap<>();
             for (Code code : dataTradePolicy.getDataTypeCodeList()) {
                 Map<Long, Long> allBuyOrderNumbers = tradeQueueService.getAllBuyOrderCachedNumbers(code.getCode());
                 Map<Long, Long> allSellOrderNumbers = tradeQueueService.getAllSellOrderCachedNumbers(code.getCode());
                 List<ContractDto> recentContracts = contractQueueService.getRecentContracts(code.getCode());
 
-                dataMap.put(code.getCode(),OrdersQueueDto.builder()
+                dataMap.put(code.getCode(), OrdersQueueDto.builder()
                         .buyOrderQuantity(allBuyOrderNumbers)
                         .sellOrderQuantity(allSellOrderNumbers)
                         .recentContracts(recentContracts)
                         .build());
             }
-            tradeQueuePublisher.publish(LocalDateTime.now(),dataMap);
+            tradeQueuePublisher.publish(LocalDateTime.now(), dataMap);
+
+
+
+
         } catch (Exception e) {
             tradeQueueService.init();
             log.error("집계 완료 메시지 처리 중 오류: {}", e.getMessage(), e);
         }
     }
+
+
 
     private TradeExecutedMessage getTradeExecutedMessage(Message message) throws JsonProcessingException {
         String payload = new String(message.getBody());
