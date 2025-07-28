@@ -19,7 +19,7 @@ public interface TradeQueueService {
     void initAllOrdersNumber(Map<String, OrdersQueueDto> dataMap);
     void saveAllOrdersNumber(Map<String, OrdersQueueDto> dataMap);
 
-    void changeCurrentDataAmount(String dataCode, long price, long sellChangeNumber, long purchaseChangeNumber);
+    void changeCurrentDataAmount(String dataCode, Map<Long, Long> saleDataChanges, Map<Long,Long> purchaseDataChanges);
 
     void init();
 }
