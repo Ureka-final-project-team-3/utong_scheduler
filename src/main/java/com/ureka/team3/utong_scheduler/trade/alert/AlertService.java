@@ -47,7 +47,7 @@ public class AlertService {
                     message.getDataCode(),
                     totalQuantity,
                     contractedAt,
-                    message.getPrice(),
+                    message.getRequestPrice(),
                     message.getRequestOrderId()
             );
             alertMap.computeIfAbsent(purchaseAccountId, k -> new ArrayList<>()).add(buyerAlert);
@@ -72,7 +72,7 @@ public class AlertService {
                     message.getDataCode(),
                     totalQuantity,
                     contractedAt,
-                    message.getPrice(),
+                    message.getRequestPrice(),
                     message.getRequestOrderId()
             );
             alertMap.computeIfAbsent(saleAccountId, k -> new ArrayList<>()).add(sellerAlert);

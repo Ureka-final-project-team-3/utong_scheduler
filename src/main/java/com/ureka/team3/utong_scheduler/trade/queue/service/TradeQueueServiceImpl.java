@@ -86,11 +86,19 @@ public class TradeQueueServiceImpl implements TradeQueueService {
 
     }
 
-
     @Override
-    public void changeCurrentDataAmount(String dataCode, long price, long sellChangeNumber, long purchaseChangeNumber){
-        tradeQueueRepository.changeCurrentBuyOrderQuantity(dataCode,price, purchaseChangeNumber);
-        tradeQueueRepository.changeCurrentSellOrderQuantity(dataCode,price,sellChangeNumber);
+    public void changeCurrentDataAmount(String dataCode, Map<Long, Long> saleDataChanges, Map<Long, Long> purchaseDataChanges) {
+        for (Map.Entry<Long, Long> entry : saleDataChanges.entrySet()) {
+            Long price = entry.getKey();
+            Long amount = entry.getValue();
+            tradeQueueRepository.changeCurrentSellOrderQuantity(dataCode,price,amount);
+        }
+
+        for (Map.Entry<Long, Long> entry : purchaseDataChanges.entrySet()) {
+            Long price = entry.getKey();
+            Long amount = entry.getValue();
+            tradeQueueRepository.changeCurrentBuyOrderQuantity(dataCode,price,amount);
+        }
     }
 
     @Override
