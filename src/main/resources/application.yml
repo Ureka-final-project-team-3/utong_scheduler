@@ -39,8 +39,7 @@ management:
       show-details: always
   metrics:
     enable:
-      process: false      # ✅ ProcessorMetrics 비활성화
-      system.cpu: false   # ✅ CPU 관련 시스템 메트릭 비활성화
+      system.processor: false
 
 server:
   port: 8082
