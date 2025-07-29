@@ -28,7 +28,7 @@ import java.util.Map;
 @Component
 @RequiredArgsConstructor
 @Slf4j
-public class TradeExecutedSubscriber implements MessageListener {   // 평균 시세 그래프 집계 완료 시 호출 (1시간 마다)
+public class TradeExecutedSubscriber implements MessageListener {
     private final ObjectMapper objectMapper;
     private final TradeQueueService tradeQueueService;
     private final TradeQueuePublisher tradeQueuePublisher;
@@ -47,22 +47,28 @@ public class TradeExecutedSubscriber implements MessageListener {   // 평균 �
             List<TradeMatch> matchedList = tradeExecutedMessage.getMatchedList();
             if (tradeExecutedMessage.getRequestType().equals(RequestType.PURCHASE)) {
                 purchaseDataChanges.put(tradeExecutedMessage.getRequestPrice(), tradeExecutedMessage.getRemain());
-                for (TradeMatch tradeMatch : matchedList) {
-                    Long pricePerUnit = tradeMatch.getPricePerUnit();
-                    Long amount = tradeMatch.getAmount();
+                if(matchedList!=null&&!matchedList.isEmpty()){
+                    for (TradeMatch tradeMatch : matchedList) {
+                        Long pricePerUnit = tradeMatch.getPricePerUnit();
+                        Long amount = tradeMatch.getAmount();
 
-                    saleDataChanges.put(pricePerUnit,
-                            saleDataChanges.getOrDefault(pricePerUnit, 0L) - amount);
+                        saleDataChanges.put(pricePerUnit,
+                                saleDataChanges.getOrDefault(pricePerUnit, 0L) - amount);
+                    }
                 }
+
             } else {
                 saleDataChanges.put(tradeExecutedMessage.getRequestPrice(), tradeExecutedMessage.getRemain());
-                for (TradeMatch tradeMatch : matchedList) {
-                    Long pricePerUnit = tradeMatch.getPricePerUnit();
-                    Long amount = tradeMatch.getAmount();
+                if(matchedList!=null&&!matchedList.isEmpty()){
+                    for (TradeMatch tradeMatch : matchedList) {
+                        Long pricePerUnit = tradeMatch.getPricePerUnit();
+                        Long amount = tradeMatch.getAmount();
 
-                    purchaseDataChanges.put(pricePerUnit,
-                            purchaseDataChanges.getOrDefault(pricePerUnit, 0L) - amount);
+                        purchaseDataChanges.put(pricePerUnit,
+                                purchaseDataChanges.getOrDefault(pricePerUnit, 0L) - amount);
+                    }
                 }
+
             }
 
             tradeQueueService.changeCurrentDataAmount(tradeExecutedMessage.getDataCode(), saleDataChanges, purchaseDataChanges);
