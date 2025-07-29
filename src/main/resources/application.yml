@@ -10,6 +10,7 @@ spring:
     hikari:
       maximum-pool-size: 20
       minimum-idle: 5
+
   data:
     redis:
       host: ${REDIS_HOST}
@@ -36,6 +37,10 @@ management:
   endpoint:
     health:
       show-details: always
+  metrics:
+    enable:
+      process: false      # ✅ ProcessorMetrics 비활성화
+      system.cpu: false   # ✅ CPU 관련 시스템 메트릭 비활성화
 
 server:
   port: 8082
