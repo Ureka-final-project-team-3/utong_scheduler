@@ -39,7 +39,8 @@ management:
       show-details: always
   metrics:
     enable:
-      system.processor: false
+      system: false  # ← 이렇게 변경
+      process: false # ← 추가
 
 server:
   port: 8082
