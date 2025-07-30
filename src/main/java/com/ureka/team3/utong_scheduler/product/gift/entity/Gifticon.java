@@ -1,4 +1,4 @@
-package com.ureka.team3.utong_scheduler.gift.entity;
+package com.ureka.team3.utong_scheduler.product.gift.entity;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
