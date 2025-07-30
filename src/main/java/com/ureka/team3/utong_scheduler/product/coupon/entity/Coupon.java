@@ -1,6 +1,6 @@
-package com.ureka.team3.utong_scheduler.coupon.entity;
+package com.ureka.team3.utong_scheduler.product.coupon.entity;
 
-import com.ureka.team3.utong_scheduler.gift.entity.Gifticon;
+import com.ureka.team3.utong_scheduler.product.gift.entity.Gifticon;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
