@@ -1,20 +1,23 @@
-package com.ureka.team3.utong_scheduler.coupon.entity;
+package com.ureka.team3.utong_scheduler.product.gift.entity;
 
 import com.ureka.team3.utong_scheduler.auth.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.GenericGenerator;
 
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "user_coupon")
+@Table(name = "user_gifticon")
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class UserCoupon {
+public class UserGifticon {
 
     @Id
+    @GeneratedValue(generator = "uuid2")
+    @GenericGenerator(name = "uuid2", strategy = "uuid2")
     @Column(length = 36)
     private String id;
 
@@ -23,16 +26,17 @@ public class UserCoupon {
     private User user;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "coupon_id", nullable = false)
-    private Coupon coupon;
+    @JoinColumn(name = "gifticon_id", nullable = false)
+    private Gifticon gifticon;
 
-    @Column(name = "status")
+    @Column(name = "is_active")
     @Setter
-    private String status; // 상태 코드 (001 : 만료, 002 : 사용 가능, 003 : 사용 완료)
+    private Boolean isActive;
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
     @Column(name = "expired_at")
     private LocalDateTime expiredAt;
+
 }
