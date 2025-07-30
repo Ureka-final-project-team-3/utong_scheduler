@@ -22,6 +22,7 @@ import com.ureka.team3.utong_scheduler.trade.RequestType;
 import com.ureka.team3.utong_scheduler.trade.alert.AlertService;
 import com.ureka.team3.utong_scheduler.trade.alert.ContractDto;
 import com.ureka.team3.utong_scheduler.trade.global.config.DataTradePolicy;
+import com.ureka.team3.utong_scheduler.trade.global.entity.Contract;
 import com.ureka.team3.utong_scheduler.trade.notification.enums.ContractType;
 import com.ureka.team3.utong_scheduler.trade.notification.service.TradeNotificationService;
 import com.ureka.team3.utong_scheduler.trade.queue.dto.OrdersQueueDto;
@@ -121,8 +122,8 @@ public class TradeExecutedSubscriber implements MessageListener {
             log.info("거래 체결 메일 발송 시작 - 계약 수: {}", contracts.size());
 
             for (ContractDto contract : contracts) {
-                sendEmailToAccount(contract.getPurchaseAccountId(), ContractType.BUY, processedAccounts);
-                sendEmailToAccount(contract.getSaleAccountId(), ContractType.SALE, processedAccounts);
+                sendEmailToAccount(contract.getPurchaseAccountId(), ContractType.BUY, processedAccounts, contract);
+                sendEmailToAccount(contract.getSaleAccountId(), ContractType.SALE, processedAccounts, contract);
             }
 
             log.info("거래 체결 메일 발송 완료 - 발송 계정 수: {}", processedAccounts.size());
@@ -131,7 +132,7 @@ public class TradeExecutedSubscriber implements MessageListener {
             log.error("거래 체결 메일 발송 중 오류: {}", e.getMessage(), e);
         }
     }
-    private void sendEmailToAccount(String accountId, ContractType contractType, Set<String> processedAccounts) {
+    private void sendEmailToAccount(String accountId, ContractType contractType, Set<String> processedAccounts, ContractDto contractDto) {
         if (accountId == null || processedAccounts.contains(accountId)) {
             return; 
         }
@@ -143,9 +144,8 @@ public class TradeExecutedSubscriber implements MessageListener {
                 log.warn("계정 정보 또는 이메일이 없습니다. accountId: {}", accountId);
                 return;
             }
-
             boolean success = tradeNotificationService.sendContractCompleteMessage(
-                account.getEmail(), account.getNickname(), contractType
+                account.getEmail(), account.getNickname(), contractType, contractDto
             );
             
             if (success) {
