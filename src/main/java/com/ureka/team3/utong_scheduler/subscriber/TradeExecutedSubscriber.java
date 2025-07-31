@@ -23,7 +23,6 @@ import com.ureka.team3.utong_scheduler.trade.RequestType;
 import com.ureka.team3.utong_scheduler.trade.alert.AlertService;
 import com.ureka.team3.utong_scheduler.trade.alert.ContractDto;
 import com.ureka.team3.utong_scheduler.trade.global.config.DataTradePolicy;
-import com.ureka.team3.utong_scheduler.trade.global.entity.Contract;
 import com.ureka.team3.utong_scheduler.trade.notification.enums.ContractType;
 import com.ureka.team3.utong_scheduler.trade.notification.service.TradeNotificationService;
 import com.ureka.team3.utong_scheduler.trade.queue.dto.OrdersQueueDto;
