@@ -9,6 +9,7 @@ import java.util.Set;
 
 import org.springframework.data.redis.connection.Message;
 import org.springframework.data.redis.connection.MessageListener;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -109,7 +110,7 @@ public class TradeExecutedSubscriber implements MessageListener {
 	        log.error("집계 완료 메시지 처리 중 오류: {}", e.getMessage(), e);
 	    }
 	}
-
+    @Async
     private void sendContractNotificationEmails(TradeExecutedMessage message) {
         try {
             Set<String> processedAccounts = new HashSet<>();
@@ -132,6 +133,7 @@ public class TradeExecutedSubscriber implements MessageListener {
             log.error("거래 체결 메일 발송 중 오류: {}", e.getMessage(), e);
         }
     }
+    @Async
     private void sendEmailToAccount(String accountId, ContractType contractType, Set<String> processedAccounts, ContractDto contractDto) {
         if (accountId == null || processedAccounts.contains(accountId)) {
             return; 
