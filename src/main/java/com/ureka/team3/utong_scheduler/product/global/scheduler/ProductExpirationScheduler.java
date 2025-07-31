@@ -1,7 +1,7 @@
-package com.ureka.team3.utong_scheduler.product.scheduler;
+package com.ureka.team3.utong_scheduler.product.global.scheduler;
 
 import com.ureka.team3.utong_scheduler.product.coupon.service.UserCouponService;
-import com.ureka.team3.utong_scheduler.product.dto.ExpirationResult;
+import com.ureka.team3.utong_scheduler.product.global.dto.ExpirationResult;
 import com.ureka.team3.utong_scheduler.product.gift.service.UserGifticonService;
 import com.ureka.team3.utong_scheduler.product.global.enums.ProductType;
 import lombok.RequiredArgsConstructor;
@@ -23,7 +23,7 @@ public class ProductExpirationScheduler {
 
     private final ExecutorService executorService = Executors.newFixedThreadPool(2);
 
-    @Scheduled(cron = "0 * * * * *")
+    @Scheduled(cron = "0 0 0 * * *")
     public void expireProducts() {
         long startTime = System.currentTimeMillis();
 
