@@ -1,4 +1,4 @@
-package com.ureka.team3.utong_scheduler.product.dto;
+package com.ureka.team3.utong_scheduler.product.global.dto;
 
 import com.ureka.team3.utong_scheduler.product.global.enums.ProductType;
 import lombok.*;
