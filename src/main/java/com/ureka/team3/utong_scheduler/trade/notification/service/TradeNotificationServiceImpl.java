@@ -19,7 +19,6 @@ import lombok.extern.slf4j.Slf4j;
 public class TradeNotificationServiceImpl implements TradeNotificationService {
 
     private final JavaMailSender mailSender;
-    @Async
     @Override
     public boolean sendContractCompleteMessage(String to, String nickname, ContractType contractType, ContractDto contractDto) {
         try {
@@ -41,7 +40,6 @@ public class TradeNotificationServiceImpl implements TradeNotificationService {
             return false;
         }
     }
-    @Async
     private String createContractEmailTemplate(String nickname, ContractType contractType, ContractNotificationDto dto) {
         if(ContractType.BUY.equals(contractType))
         {

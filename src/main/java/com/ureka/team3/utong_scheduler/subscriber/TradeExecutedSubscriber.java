@@ -53,6 +53,7 @@ public class TradeExecutedSubscriber implements MessageListener {
         try {
             log.info("집계 완료 메시지 수신: {}", message);
             TradeExecutedMessage tradeExecutedMessage = getTradeExecutedMessage(message);
+            
             Map<Long, Long> saleDataChanges = new HashMap<>();
             Map<Long, Long> purchaseDataChanges = new HashMap<>();
             List<TradeMatch> matchedList = tradeExecutedMessage.getMatchedList();
@@ -86,7 +87,7 @@ public class TradeExecutedSubscriber implements MessageListener {
             if (tradeExecutedMessage.getNewContracts() != null && !tradeExecutedMessage.getNewContracts().isEmpty()) {
                 contractQueueService.addNewContracts(tradeExecutedMessage.getDataCode(), tradeExecutedMessage.getNewContracts());
                 alertPublisher.publish(LocalDateTime.now(), alertService.buildAlertMessage(tradeExecutedMessage));
-//                sendContractNotificationEmails(tradeExecutedMessage);
+                sendContractNotificationEmails(tradeExecutedMessage);
             }
 
             Map<String, OrdersQueueDto> dataMap = new HashMap<>();
