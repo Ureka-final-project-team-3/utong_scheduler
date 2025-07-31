@@ -2,6 +2,7 @@ package com.ureka.team3.utong_scheduler.trade.notification.service;
 
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import com.ureka.team3.utong_scheduler.trade.alert.ContractDto;
@@ -18,7 +19,6 @@ import lombok.extern.slf4j.Slf4j;
 public class TradeNotificationServiceImpl implements TradeNotificationService {
 
     private final JavaMailSender mailSender;
-
     @Override
     public boolean sendContractCompleteMessage(String to, String nickname, ContractType contractType, ContractDto contractDto) {
         try {
@@ -40,7 +40,6 @@ public class TradeNotificationServiceImpl implements TradeNotificationService {
             return false;
         }
     }
-
     private String createContractEmailTemplate(String nickname, ContractType contractType, ContractNotificationDto dto) {
         if(ContractType.BUY.equals(contractType))
         {

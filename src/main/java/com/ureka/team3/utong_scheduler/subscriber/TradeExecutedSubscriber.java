@@ -9,6 +9,7 @@ import java.util.Set;
 
 import org.springframework.data.redis.connection.Message;
 import org.springframework.data.redis.connection.MessageListener;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -22,7 +23,6 @@ import com.ureka.team3.utong_scheduler.trade.RequestType;
 import com.ureka.team3.utong_scheduler.trade.alert.AlertService;
 import com.ureka.team3.utong_scheduler.trade.alert.ContractDto;
 import com.ureka.team3.utong_scheduler.trade.global.config.DataTradePolicy;
-import com.ureka.team3.utong_scheduler.trade.global.entity.Contract;
 import com.ureka.team3.utong_scheduler.trade.notification.enums.ContractType;
 import com.ureka.team3.utong_scheduler.trade.notification.service.TradeNotificationService;
 import com.ureka.team3.utong_scheduler.trade.queue.dto.OrdersQueueDto;
@@ -52,6 +52,7 @@ public class TradeExecutedSubscriber implements MessageListener {
         try {
             log.info("집계 완료 메시지 수신: {}", message);
             TradeExecutedMessage tradeExecutedMessage = getTradeExecutedMessage(message);
+            
             Map<Long, Long> saleDataChanges = new HashMap<>();
             Map<Long, Long> purchaseDataChanges = new HashMap<>();
             List<TradeMatch> matchedList = tradeExecutedMessage.getMatchedList();
@@ -109,8 +110,9 @@ public class TradeExecutedSubscriber implements MessageListener {
 	        log.error("집계 완료 메시지 처리 중 오류: {}", e.getMessage(), e);
 	    }
 	}
-
-    private void sendContractNotificationEmails(TradeExecutedMessage message) {
+    
+    @Async
+    public void sendContractNotificationEmails(TradeExecutedMessage message) {
         try {
             Set<String> processedAccounts = new HashSet<>();
             List<ContractDto> contracts = message.getNewContracts();
@@ -132,6 +134,7 @@ public class TradeExecutedSubscriber implements MessageListener {
             log.error("거래 체결 메일 발송 중 오류: {}", e.getMessage(), e);
         }
     }
+    
     private void sendEmailToAccount(String accountId, ContractType contractType, Set<String> processedAccounts, ContractDto contractDto) {
         if (accountId == null || processedAccounts.contains(accountId)) {
             return; 
