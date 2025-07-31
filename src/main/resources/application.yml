@@ -10,6 +10,7 @@ spring:
     hikari:
       maximum-pool-size: 20
       minimum-idle: 5
+
   data:
     redis:
       host: ${REDIS_HOST}
@@ -36,6 +37,10 @@ management:
   endpoint:
     health:
       show-details: always
+  metrics:
+    enable:
+      system: false  # ← 이렇게 변경
+      process: false # ← 추가
 
 server:
   port: 8082

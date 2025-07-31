@@ -45,7 +45,11 @@ public class Account implements UserDetails {
 
     @Column(name = "default_line")
     private String defaultLine;
-
+    
+    @Column(name = "is_mail", nullable = false)
+    @Builder.Default
+    private Boolean isMail = true;
+    
     @OneToOne(mappedBy = "account", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private User user;
 

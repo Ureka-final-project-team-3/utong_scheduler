@@ -2,6 +2,7 @@ package com.ureka.team3.utong_scheduler.trade.queue.dto;
 
 
 import com.ureka.team3.utong_scheduler.trade.RequestType;
+import com.ureka.team3.utong_scheduler.trade.alert.ContractDto;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -13,9 +14,8 @@ public class TradeExecutedMessage {
     private String dataCode;
     private String requestOrderId;
     private RequestType requestType;
-    private Long purchaseDataChange;
-    private Long saleDataChange;
+    private Long remain;
+    private Long requestPrice;
     private List<TradeMatch> matchedList;
-    private Long price;
     private List<ContractDto> newContracts;
 }
