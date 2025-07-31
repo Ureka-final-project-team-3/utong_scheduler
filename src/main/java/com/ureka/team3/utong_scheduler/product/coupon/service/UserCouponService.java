@@ -1,6 +1,6 @@
 package com.ureka.team3.utong_scheduler.product.coupon.service;
 
-import com.ureka.team3.utong_scheduler.product.dto.ExpirationResult;
+import com.ureka.team3.utong_scheduler.product.global.dto.ExpirationResult;
 
 public interface UserCouponService {
 
