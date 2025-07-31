@@ -45,8 +45,7 @@ public class TradeExecutedSubscriber implements MessageListener {
     private final DataTradePolicy dataTradePolicy;
     private final AlertService alertService;
     private final AlertPublisher alertPublisher;
-    private final AccountService accountService;
-    private final TradeNotificationService tradeNotificationService;
+    private final EmailSender emailSender;
     @Override
     public void onMessage(Message message, byte[] pattern) {
         try {
@@ -86,7 +85,7 @@ public class TradeExecutedSubscriber implements MessageListener {
             if (tradeExecutedMessage.getNewContracts() != null && !tradeExecutedMessage.getNewContracts().isEmpty()) {
                 contractQueueService.addNewContracts(tradeExecutedMessage.getDataCode(), tradeExecutedMessage.getNewContracts());
                 alertPublisher.publish(LocalDateTime.now(), alertService.buildAlertMessage(tradeExecutedMessage));
-                sendContractNotificationEmails(tradeExecutedMessage);
+                emailSender.sendContractNotificationEmails(tradeExecutedMessage);
             }
 
             Map<String, OrdersQueueDto> dataMap = new HashMap<>();
@@ -110,66 +109,15 @@ public class TradeExecutedSubscriber implements MessageListener {
 	        log.error("집계 완료 메시지 처리 중 오류: {}", e.getMessage(), e);
 	    }
 	}
-    
-    @Async
-    public void sendContractNotificationEmails(TradeExecutedMessage message) {
-        try {
-            Set<String> processedAccounts = new HashSet<>();
-            List<ContractDto> contracts = message.getNewContracts();
-            
-            if (contracts == null || contracts.isEmpty()) {
-                return;
-            }
 
-            log.info("거래 체결 메일 발송 시작 - 계약 수: {}", contracts.size());
+    private TradeExecutedMessage getTradeExecutedMessage(Message message) throws JsonProcessingException {
+        String payload = new String(message.getBody());
+        return getTradeExecutedMessage(payload);
+    }
 
-            for (ContractDto contract : contracts) {
-                sendEmailToAccount(contract.getPurchaseAccountId(), ContractType.BUY, processedAccounts, contract);
-                sendEmailToAccount(contract.getSaleAccountId(), ContractType.SALE, processedAccounts, contract);
-            }
-
-            log.info("거래 체결 메일 발송 완료 - 발송 계정 수: {}", processedAccounts.size());
-            
-        } catch (Exception e) {
-            log.error("거래 체결 메일 발송 중 오류: {}", e.getMessage(), e);
-        }
+    private TradeExecutedMessage getTradeExecutedMessage(String payload) throws JsonProcessingException {
+        return objectMapper.readValue(payload, TradeExecutedMessage.class);
     }
     
-    private void sendEmailToAccount(String accountId, ContractType contractType, Set<String> processedAccounts, ContractDto contractDto) {
-        if (accountId == null || processedAccounts.contains(accountId)) {
-            return; 
-        }
 
-        try {
-			Account account = accountService.findById(accountId);
-            
-            if (account == null || account.getEmail() == null) {
-                log.warn("계정 정보 또는 이메일이 없습니다. accountId: {}", accountId);
-                return;
-            }
-            boolean success = tradeNotificationService.sendContractCompleteMessage(
-                account.getEmail(), account.getNickname(), contractType, contractDto
-            );
-            
-            if (success) {
-                log.info("거래 체결 메일 발송 성공 - 이메일: {}, 타입: {}", account.getEmail(), contractType);
-            } else {
-                log.warn("거래 체결 메일 발송 실패 - 이메일: {}, 타입: {}", account.getEmail(), contractType);
-            }
-            
-            processedAccounts.add(accountId);
-            
-        } catch (Exception e) {
-            log.error("계정 {}에게 메일 발송 실패: {}", accountId, e.getMessage());
-        }
-    }
-    
-	private TradeExecutedMessage getTradeExecutedMessage(Message message) throws JsonProcessingException {
-	    String payload = new String(message.getBody());
-	    return getTradeExecutedMessage(payload);
-	}
-	
-	private TradeExecutedMessage getTradeExecutedMessage(String payload) throws JsonProcessingException {
-	    return objectMapper.readValue(payload, TradeExecutedMessage.class);
-	}
 }
