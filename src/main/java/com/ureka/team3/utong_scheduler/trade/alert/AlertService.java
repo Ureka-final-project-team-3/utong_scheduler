@@ -29,10 +29,12 @@ public class AlertService {
 
         if (requestType == RequestType.PURCHASE) {
             String purchaseAccountId = contracts.get(0).getPurchaseAccountId();
+            Map<Long, Long> priceToQuantityMap = new HashMap<>();
 
             for (ContractDto contract : contracts) {
                 totalQuantity += contract.getQuantity();
 
+                // 판매자 알림
                 ContractAlertDto sellerAlert = createAlertDto(
                         RequestType.SALE,
                         contract,
@@ -40,24 +42,34 @@ public class AlertService {
                 );
                 alertMap.computeIfAbsent(contract.getSaleAccountId(), k -> new ArrayList<>())
                         .add(sellerAlert);
+
+                // 구매자 가격별 수량 집계
+                priceToQuantityMap.merge(contract.getPrice(), contract.getQuantity(), Long::sum);
             }
 
-            ContractAlertDto buyerAlert = createAlertDto(
-                    RequestType.PURCHASE,
-                    message.getDataCode(),
-                    totalQuantity,
-                    contractedAt,
-                    message.getRequestPrice(),
-                    message.getRequestOrderId()
-            );
-            alertMap.computeIfAbsent(purchaseAccountId, k -> new ArrayList<>()).add(buyerAlert);
+            // 구매자 알림 (가격별)
+            List<ContractAlertDto> buyerAlerts = new ArrayList<>();
+            for (Map.Entry<Long, Long> entry : priceToQuantityMap.entrySet()) {
+                ContractAlertDto buyerAlert = createAlertDto(
+                        RequestType.PURCHASE,
+                        message.getDataCode(),
+                        entry.getValue(),
+                        contractedAt,
+                        entry.getKey(),
+                        message.getRequestOrderId()
+                );
+                buyerAlerts.add(buyerAlert);
+            }
+            alertMap.put(purchaseAccountId, buyerAlerts);
 
         } else if (requestType == RequestType.SALE) {
             String saleAccountId = contracts.get(0).getSaleAccountId();
+            Map<Long, Long> priceToQuantityMap = new HashMap<>();
 
             for (ContractDto contract : contracts) {
                 totalQuantity += contract.getQuantity();
 
+                // 구매자 알림
                 ContractAlertDto buyerAlert = createAlertDto(
                         RequestType.PURCHASE,
                         contract,
@@ -65,17 +77,25 @@ public class AlertService {
                 );
                 alertMap.computeIfAbsent(contract.getPurchaseAccountId(), k -> new ArrayList<>())
                         .add(buyerAlert);
+
+                // 판매자 가격별 수량 집계
+                priceToQuantityMap.merge(contract.getPrice(), contract.getQuantity(), Long::sum);
             }
 
-            ContractAlertDto sellerAlert = createAlertDto(
-                    RequestType.SALE,
-                    message.getDataCode(),
-                    totalQuantity,
-                    contractedAt,
-                    message.getRequestPrice(),
-                    message.getRequestOrderId()
-            );
-            alertMap.computeIfAbsent(saleAccountId, k -> new ArrayList<>()).add(sellerAlert);
+            // 판매자 알림 (가격별)
+            List<ContractAlertDto> sellerAlerts = new ArrayList<>();
+            for (Map.Entry<Long, Long> entry : priceToQuantityMap.entrySet()) {
+                ContractAlertDto sellerAlert = createAlertDto(
+                        RequestType.SALE,
+                        message.getDataCode(),
+                        entry.getValue(),
+                        contractedAt,
+                        entry.getKey(),
+                        message.getRequestOrderId()
+                );
+                sellerAlerts.add(sellerAlert);
+            }
+            alertMap.put(saleAccountId, sellerAlerts);
         }
 
         return AlertMessage.builder()

@@ -85,7 +85,7 @@ public class TradeExecutedSubscriber implements MessageListener {
             if (tradeExecutedMessage.getNewContracts() != null && !tradeExecutedMessage.getNewContracts().isEmpty()) {
                 contractQueueService.addNewContracts(tradeExecutedMessage.getDataCode(), tradeExecutedMessage.getNewContracts());
                 alertPublisher.publish(LocalDateTime.now(), alertService.buildAlertMessage(tradeExecutedMessage));
-                emailSender.sendContractNotificationEmails(tradeExecutedMessage);
+                emailSender.sendContractNotificationEmails(tradeExecutedMessage); // 비동기
             }
 
             Map<String, OrdersQueueDto> dataMap = new HashMap<>();
