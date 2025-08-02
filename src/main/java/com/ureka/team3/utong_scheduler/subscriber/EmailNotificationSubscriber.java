@@ -3,27 +3,42 @@ package com.ureka.team3.utong_scheduler.subscriber;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ureka.team3.utong_scheduler.auth.entity.Account;
 import com.ureka.team3.utong_scheduler.auth.service.AccountService;
+import com.ureka.team3.utong_scheduler.config.RabbitMQConfig;
 import com.ureka.team3.utong_scheduler.trade.alert.ContractDto;
 import com.ureka.team3.utong_scheduler.trade.notification.enums.ContractType;
 import com.ureka.team3.utong_scheduler.trade.notification.service.TradeNotificationService;
 import com.ureka.team3.utong_scheduler.trade.queue.dto.TradeExecutedMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.scheduling.annotation.Async;
-import org.springframework.stereotype.Service;
+import org.springframework.amqp.rabbit.annotation.RabbitListener;
+import org.springframework.stereotype.Component;
 
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-@Service
+@Component
 @Slf4j
 @RequiredArgsConstructor
-public class EmailSender {
+public class EmailNotificationSubscriber {
+
     private final AccountService accountService;
-    private final ObjectMapper objectMapper;
     private final TradeNotificationService tradeNotificationService;
-    @Async
+
+    @RabbitListener(queues = RabbitMQConfig.EMAIL_QUEUE)
+    public void handleEmailNotification(TradeExecutedMessage message) {
+        log.info("이메일 발송 메시지 수신 - 데이터코드 : {}, 계약 수 : {}",
+                message.getDataCode(),
+                message.getNewContracts().size());
+
+        try {
+            sendContractNotificationEmails(message);
+        } catch (Exception e) {
+            log.error("이메일 발송 처리 실패 - 에러 : {}", e.getMessage());
+            throw e;
+        }
+    }
+
     public void sendContractNotificationEmails(TradeExecutedMessage message) {
         try {
             Set<String> processedAccounts = new HashSet<>();
