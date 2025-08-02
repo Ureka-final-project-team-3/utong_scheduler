@@ -71,9 +71,7 @@ public class TradeNotificationServiceImpl implements TradeNotificationService {
                                 <div class="info-box">
                                     <h3>계약 정보</h3>
                                     <ul>
-                                        <li><strong>구매 주문 ID:</strong> %s</li>
-                                        <li><strong>판매 주문 ID:</strong> %s</li>
-                                        <li><strong>데이터 코드:</strong> %s</li>
+                                        <li><strong>데이터 유형:</strong> %s</li>
                                         <li><strong>구매 수량:</strong> %,dGB</li>
                                         <li><strong>단가:</strong> %,dp</li>
                                         <li><strong>총 결제 금액:</strong> %,dp</li>
@@ -85,15 +83,13 @@ public class TradeNotificationServiceImpl implements TradeNotificationService {
                             </div>
                             <div class="footer">
                                 <p>문의사항이 있으시면 언제든 연락해 주세요.</p>
-                                <p>우통(UTONG) 팀 드림</p>
+                                <p>유통(UTONG) 팀 드림</p>
                             </div>
                         </div>
                     </body>
                     </html>
                     """,
-                    dto.getSellerNickname(),
-                    dto.getPurchaseOrderId(),
-                    dto.getSaleOrderId(),
+                    nickname,
                     convertDataCode(dto.getDataCode()),
                     dto.getQuantity(),
                     dto.getPrice(),
@@ -132,9 +128,7 @@ public class TradeNotificationServiceImpl implements TradeNotificationService {
                                 <div class="info-box">
                                     <h3>계약 정보</h3>
                                     <ul>
-                                        <li><strong>판매 주문 ID:</strong> %s</li>
-                                        <li><strong>구매 주문 ID:</strong> %s</li>
-                                        <li><strong>데이터 코드:</strong> %s</li>
+                                        <li><strong>데이터 유형:</strong> %s</li>
                                         <li><strong>판매 수량:</strong> %,dGB</li>
                                         <li><strong>단가:</strong> %,dp</li>
                                         <li><strong>총 판매 금액:</strong> <span class="highlight">%,dp</span></li>
@@ -152,9 +146,7 @@ public class TradeNotificationServiceImpl implements TradeNotificationService {
                     </body>
                     </html>
                     """,
-                    dto.getSellerNickname(),
-                    dto.getSaleOrderId(),
-                    dto.getPurchaseOrderId(),
+                    nickname,
                     convertDataCode(dto.getDataCode()),
                     dto.getQuantity(),
                     dto.getPrice(),
