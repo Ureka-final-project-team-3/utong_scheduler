@@ -2,20 +2,15 @@ package com.ureka.team3.utong_scheduler.subscriber;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import org.springframework.data.redis.connection.Message;
 import org.springframework.data.redis.connection.MessageListener;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.ureka.team3.utong_scheduler.auth.entity.Account;
-import com.ureka.team3.utong_scheduler.auth.service.AccountService;
 import com.ureka.team3.utong_scheduler.common.entity.Code;
 import com.ureka.team3.utong_scheduler.publisher.AlertPublisher;
 import com.ureka.team3.utong_scheduler.publisher.TradeQueuePublisher;
@@ -23,8 +18,6 @@ import com.ureka.team3.utong_scheduler.trade.RequestType;
 import com.ureka.team3.utong_scheduler.trade.alert.AlertService;
 import com.ureka.team3.utong_scheduler.trade.alert.ContractDto;
 import com.ureka.team3.utong_scheduler.trade.global.config.DataTradePolicy;
-import com.ureka.team3.utong_scheduler.trade.notification.enums.ContractType;
-import com.ureka.team3.utong_scheduler.trade.notification.service.TradeNotificationService;
 import com.ureka.team3.utong_scheduler.trade.queue.dto.OrdersQueueDto;
 import com.ureka.team3.utong_scheduler.trade.queue.dto.TradeExecutedMessage;
 import com.ureka.team3.utong_scheduler.trade.queue.dto.TradeMatch;
@@ -38,6 +31,7 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 @Slf4j
 public class TradeExecutedSubscriber implements MessageListener {
+
     private final ObjectMapper objectMapper;
     private final TradeQueueService tradeQueueService;
     private final TradeQueuePublisher tradeQueuePublisher;
@@ -45,7 +39,8 @@ public class TradeExecutedSubscriber implements MessageListener {
     private final DataTradePolicy dataTradePolicy;
     private final AlertService alertService;
     private final AlertPublisher alertPublisher;
-    private final EmailSender emailSender;
+    private final EmailNotificationSubscriber emailNotificationSubscriber;
+
     @Override
     public void onMessage(Message message, byte[] pattern) {
         try {
@@ -85,7 +80,7 @@ public class TradeExecutedSubscriber implements MessageListener {
             if (tradeExecutedMessage.getNewContracts() != null && !tradeExecutedMessage.getNewContracts().isEmpty()) {
                 contractQueueService.addNewContracts(tradeExecutedMessage.getDataCode(), tradeExecutedMessage.getNewContracts());
                 alertPublisher.publish(LocalDateTime.now(), alertService.buildAlertMessage(tradeExecutedMessage));
-                emailSender.sendContractNotificationEmails(tradeExecutedMessage); // 비동기
+//                emailNotificationSubscriber.sendContractNotificationEmails(tradeExecutedMessage); // 비동기 -> rabbitMQ 처리
             }
 
             Map<String, OrdersQueueDto> dataMap = new HashMap<>();
