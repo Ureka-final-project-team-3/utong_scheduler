@@ -1,6 +1,5 @@
 package com.ureka.team3.utong_scheduler.config;
 
-import org.springframework.amqp.core.*;
 import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
@@ -13,13 +12,13 @@ import org.springframework.context.annotation.Configuration;
 public class RabbitMQConfig {
 
     public static final String EMAIL_EXCHANGE = "email.exchange";
-    public static final String EMAIL_QUEUE = "email.notification.queue";
-    public static final String EMAIL_ROUTING_KEY = "email.notification";
+    public static final String TRADE_EXCHANGE = "trade.exchange";
 
-    // 실패 메시지 보관
-    public static final String EMAIL_DLQ = "email.notification.queue.dlq";
-    public static final String EMAIL_DLX = "email.exchange.dlx";
-    public static final String EMAIL_DLX_ROUTING_KEY = "email.dlq";
+    public static final String EMAIL_QUEUE = "email.notification.queue";
+    public static final String TRADE_EXECUTED_QUEUE = "trade.executed.queue";
+
+    public static final String TRADE_EXECUTED_ROUTING_KEY = "trade.executed";
+    public static final String EMAIL_ROUTING_KEY = "email.notification";
 
     @Bean
     public MessageConverter messageConverter() {
@@ -43,7 +42,7 @@ public class RabbitMQConfig {
         factory.setConnectionFactory(connectionFactory);
         factory.setMessageConverter(messageConverter());
         factory.setConcurrentConsumers(3); // 동시 처리 스레드 수
-        factory.setMaxConcurrentConsumers(5); // 최대 스레드 수
+        factory.setMaxConcurrentConsumers(10); // 최대 스레드 수
         return factory;
     }
 
