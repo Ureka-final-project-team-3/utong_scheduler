@@ -13,7 +13,7 @@ import org.springframework.data.redis.listener.RedisMessageListenerContainer;
 @RequiredArgsConstructor
 public class RedisConfig {
     private static final String Trade_CANCELED_CHANNEL = "trade:canceled";
-    private static final String TRADE_EXECUTED_CHANNEL = "trade:executed";
+//    private static final String TRADE_EXECUTED_CHANNEL = "trade:executed";
 
     private final TradeCanceledSubscriber tradeCanceledSubscriber;
     private final TradeExecutedSubscriber tradeExecutedSubscriber;
@@ -27,11 +27,6 @@ public class RedisConfig {
         container.addMessageListener(
                 tradeCanceledSubscriber,
                 new ChannelTopic(Trade_CANCELED_CHANNEL)
-        );
-
-        container.addMessageListener(
-                tradeExecutedSubscriber,
-                new ChannelTopic(TRADE_EXECUTED_CHANNEL)
         );
 
         return container;
