@@ -1,17 +1,7 @@
 package com.ureka.team3.utong_scheduler.subscriber;
 
-import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-import org.springframework.data.redis.connection.Message;
-import org.springframework.data.redis.connection.MessageListener;
-import org.springframework.stereotype.Component;
-
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ureka.team3.utong_scheduler.common.entity.Code;
+import com.ureka.team3.utong_scheduler.config.RabbitMQConfig;
 import com.ureka.team3.utong_scheduler.publisher.AlertPublisher;
 import com.ureka.team3.utong_scheduler.publisher.TradeQueuePublisher;
 import com.ureka.team3.utong_scheduler.trade.RequestType;
@@ -23,35 +13,48 @@ import com.ureka.team3.utong_scheduler.trade.queue.dto.TradeExecutedMessage;
 import com.ureka.team3.utong_scheduler.trade.queue.dto.TradeMatch;
 import com.ureka.team3.utong_scheduler.trade.queue.service.ContractQueueService;
 import com.ureka.team3.utong_scheduler.trade.queue.service.TradeQueueService;
-
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.amqp.rabbit.annotation.RabbitListener;
+import org.springframework.stereotype.Component;
+
+import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 @Component
 @RequiredArgsConstructor
 @Slf4j
-public class TradeExecutedSubscriber implements MessageListener {
+public class TradeExecutedSubscriber {
 
-    private final ObjectMapper objectMapper;
     private final TradeQueueService tradeQueueService;
     private final TradeQueuePublisher tradeQueuePublisher;
     private final ContractQueueService contractQueueService;
     private final DataTradePolicy dataTradePolicy;
     private final AlertService alertService;
     private final AlertPublisher alertPublisher;
-    private final EmailNotificationSubscriber emailNotificationSubscriber;
 
-    @Override
-    public void onMessage(Message message, byte[] pattern) {
+    @RabbitListener(queues = RabbitMQConfig.TRADE_EXECUTED_QUEUE)
+    public void handleTradeExecutedMessage(TradeExecutedMessage message) {
         try {
-            log.info("집계 완료 메시지 수신: {}", message);
-            TradeExecutedMessage tradeExecutedMessage = getTradeExecutedMessage(message);
-            
+            processTradeExecutedMessage(message);
+            log.info("거래 체결 메시지 처리 완료");
+        } catch (Exception e) {
+            log.error("거래 체결 메시지 처리 실패", e);
+            throw e;
+        }
+    }
+
+    public void processTradeExecutedMessage(TradeExecutedMessage message) {
+        try {
             Map<Long, Long> saleDataChanges = new HashMap<>();
             Map<Long, Long> purchaseDataChanges = new HashMap<>();
-            List<TradeMatch> matchedList = tradeExecutedMessage.getMatchedList();
-            if (tradeExecutedMessage.getRequestType().equals(RequestType.PURCHASE)) {
-                purchaseDataChanges.put(tradeExecutedMessage.getRequestPrice(), tradeExecutedMessage.getRemain());
+            List<TradeMatch> matchedList = message.getMatchedList();
+
+            if (message.getRequestType().equals(RequestType.PURCHASE)) {
+                purchaseDataChanges.put(message.getRequestPrice(), message.getRemain());
+
                 if(matchedList!=null&&!matchedList.isEmpty()){
                     for (TradeMatch tradeMatch : matchedList) {
                         Long pricePerUnit = tradeMatch.getPricePerUnit();
@@ -63,7 +66,7 @@ public class TradeExecutedSubscriber implements MessageListener {
                 }
 
             } else {
-                saleDataChanges.put(tradeExecutedMessage.getRequestPrice(), tradeExecutedMessage.getRemain());
+                saleDataChanges.put(message.getRequestPrice(), message.getRemain());
                 if(matchedList!=null&&!matchedList.isEmpty()){
                     for (TradeMatch tradeMatch : matchedList) {
                         Long pricePerUnit = tradeMatch.getPricePerUnit();
@@ -76,11 +79,12 @@ public class TradeExecutedSubscriber implements MessageListener {
 
             }
 
-            tradeQueueService.changeCurrentDataAmount(tradeExecutedMessage.getDataCode(), saleDataChanges, purchaseDataChanges);
-            if (tradeExecutedMessage.getNewContracts() != null && !tradeExecutedMessage.getNewContracts().isEmpty()) {
-                contractQueueService.addNewContracts(tradeExecutedMessage.getDataCode(), tradeExecutedMessage.getNewContracts());
-                alertPublisher.publish(LocalDateTime.now(), alertService.buildAlertMessage(tradeExecutedMessage));
-//                emailNotificationSubscriber.sendContractNotificationEmails(tradeExecutedMessage); // 비동기 -> rabbitMQ 처리
+            tradeQueueService.changeCurrentDataAmount(message.getDataCode(), saleDataChanges, purchaseDataChanges);
+
+            if (message.getNewContracts() != null && !message.getNewContracts().isEmpty()) {
+                contractQueueService.addNewContracts(message.getDataCode(), message.getNewContracts());
+                alertPublisher.publish(LocalDateTime.now(), alertService.buildAlertMessage(message));
+//               emailNotificationSubscriber.sendContractNotificationEmails(tradeExecutedMessage); // 비동기 -> rabbitMQ 처리
             }
 
             Map<String, OrdersQueueDto> dataMap = new HashMap<>();
@@ -95,24 +99,21 @@ public class TradeExecutedSubscriber implements MessageListener {
                         .recentContracts(recentContracts)
                         .build());
             }
+
             tradeQueuePublisher.publish(LocalDateTime.now(), dataMap);
-	    } catch(
-	    Exception e)
-	
-	    {
+	    } catch(Exception e) {
 	        tradeQueueService.init();
 	        log.error("집계 완료 메시지 처리 중 오류: {}", e.getMessage(), e);
 	    }
 	}
 
-    private TradeExecutedMessage getTradeExecutedMessage(Message message) throws JsonProcessingException {
-        String payload = new String(message.getBody());
-        return getTradeExecutedMessage(payload);
-    }
-
-    private TradeExecutedMessage getTradeExecutedMessage(String payload) throws JsonProcessingException {
-        return objectMapper.readValue(payload, TradeExecutedMessage.class);
-    }
+//    private TradeExecutedMessage getTradeExecutedMessage(Message message) throws JsonProcessingException {
+//        String payload = new String(message.getBody());
+//        return getTradeExecutedMessage(payload);
+//    }
+//
+//    private TradeExecutedMessage getTradeExecutedMessage(String payload) throws JsonProcessingException {
+//        return objectMapper.readValue(payload, TradeExecutedMessage.class);
+//    }
     
-
 }

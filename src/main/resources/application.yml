@@ -34,7 +34,7 @@ spring:
           multiplier: 2.0
         default-requeue-rejected: false # 실패 시 DLQ 전송
         concurrency: 3 # 동시 처리 스레드 수
-        max-concurrency: 5 # 최대 스레드 수
+        max-concurrency: 10 # 최대 스레드 수
 
   mail:
     host: smtp.gmail.com
